@@ -23,6 +23,7 @@ const resources = {
         title: "LevelUp Money Life",
         subtitle: "FinTech Command Center & Gamified Financial Operating System.",
         loading: "Initializing Local Database...",
+        logoLabel: "LevelUp Money Life Logo",
       },
       tabs: {
         dashboard: "Dashboard",
@@ -565,6 +566,7 @@ const resources = {
         title: "LevelUp Money Life",
         subtitle: "ศูนย์บัญชาการการเงินส่วนบุคคล และระบบเกมสร้างวินัยทางการเงินระดับโปร",
         loading: "กำลังเชื่อมต่อฐานข้อมูลภายในเครื่อง...",
+        logoLabel: "โลโก้ LevelUp Money Life",
       },
       tabs: {
         dashboard: "ภาพรวม Dashboard",
