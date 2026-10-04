@@ -100,9 +100,12 @@ export type DailySafeToSpend = {
   dailySafeToSpend: number;       // Average spendable THB per day for rest of month
   todayRemaining: number;         // Spendable budget remaining for today (dailySafeToSpend - todayExpenses)
   todaySpent: number;             // Total expenses logged today
-  monthSpendableBudget: number;   // Monthly allowance (Needs + Wants, excluding Savings target)
+  plannedSavingsAmount: number;
+  unpaidBillsTotal: number;
+  monthSpendableBudget: number;   // Planned monthly income less the reserved savings amount
   monthSpent: number;             // Total expenses logged so far this month
   monthRemaining: number;         // Total spendable budget remaining for the month
+  shortfall: number;
   daysRemainingInMonth: number;   // Days remaining in active month including today
   totalDaysInMonth: number;
   status: "comfortable" | "caution" | "critical";
@@ -162,6 +165,33 @@ export type SavingsGoal = {
   milestonesReached: number[]; // e.g. [25, 50, 75, 100]
   createdAt: string;
   updatedAt: string;
+};
+
+export type RecurringBill = {
+  id: string;
+  name: string;
+  amount: number;
+  category: Exclude<TransactionCategory, "Income" | "Savings">;
+  recurrence: "monthly" | "yearly";
+  dueDay: number;
+  dueMonth?: number;
+  startsOn: string;
+  estimated: boolean;
+  active: boolean;
+  payments: RecurringBillPayment[];
+};
+
+export type RecurringBillPayment = {
+  dueDate: string;
+  paidOn: string;
+  amount: number;
+  transactionId: string;
+};
+
+export type BillOccurrence = {
+  bill: RecurringBill;
+  dueDate: string;
+  overdue: boolean;
 };
 
 export type ViewTab = "dashboard" | "ledger" | "budget" | "savings" | "tax" | "analytics" | "quests";

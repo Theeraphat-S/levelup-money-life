@@ -56,7 +56,8 @@ import {
   getInitialDates,
 } from "./constants/sampleData";
 import type { BackupData } from "./services/exportImport";
-import type { Transaction, ViewTab } from "./types";
+import type { RecurringBill, RecurringBillPayment, Transaction, ViewTab } from "./types";
+import { recordBillPayment } from "./utils/recurringBills";
 
 const { today, currentMonthISO } = getInitialDates();
 
@@ -73,6 +74,7 @@ export default function App() {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
   const [quickAddType, setQuickAddType] = useState<"expense" | "income">("expense");
   const [isDataManagerOpen, setIsDataManagerOpen] = useState<boolean>(false);
+  const [recurringBills, setRecurringBills] = useState<RecurringBill[]>([]);
 
   // Domain Hooks
   const { toastNotice, showToast } = useToast();
@@ -220,6 +222,7 @@ export default function App() {
         const savedLastDate = await getSetting<string>("lastActiveDate", today);
         const savedAchievements = await getSetting<string[]>("unlockedAchievements", []);
         const savedPresets = await getStoredPresets();
+        const savedRecurringBills = await getSetting<RecurringBill[]>("recurringBills", []);
         const setupComplete = await getSetting<boolean>("setupComplete", false);
         setShowSetup(!setupComplete && txs.length === 0);
 
@@ -228,6 +231,7 @@ export default function App() {
         initQuests(qsts);
         initTaxProfile(savedTax);
         initGamification(savedXp, savedStreak, savedLastDate, savedAchievements);
+        setRecurringBills(savedRecurringBills);
       } catch (err) {
         console.error("Database initialization failed, fallback loaded:", err);
       } finally {
@@ -251,12 +255,49 @@ export default function App() {
   };
 
   // Handle Undo Transaction Revert
+  const persistRecurringBills = (nextBills: RecurringBill[]) => {
+    setRecurringBills(nextBills);
+    void saveSetting("recurringBills", nextBills);
+  };
+
   const handleUndoTransaction = (tx: Transaction) => {
     void undoTransaction(tx, {
       onDeductXp: (amount) => setTotalXp((prev) => Math.max(0, prev - amount)),
       onToast: showToast,
       undoNoticeMessage: t("quickBar.toastUndone", { name: tx.name }),
+    }).then(() => {
+      const nextBills = recurringBills.map((bill) => ({
+        ...bill,
+        payments: bill.payments.filter((payment) => payment.transactionId !== tx.id),
+      }));
+      if (nextBills.some((bill, index) => bill.payments.length !== recurringBills[index].payments.length)) {
+        persistRecurringBills(nextBills);
+      }
     }).catch(() => {});
+  };
+
+  const handleSaveRecurringBills = (nextBills: RecurringBill[]) => {
+    persistRecurringBills(nextBills);
+  };
+
+  const handlePayRecurringBill = async (bill: RecurringBill, payment: RecurringBillPayment) => {
+    const transaction: Transaction = {
+      id: payment.transactionId,
+      name: bill.name,
+      amount: -Math.abs(payment.amount),
+      date: payment.paidOn,
+      category: bill.category,
+      cleared: true,
+    };
+    await saveQuickTransaction(transaction, {
+      onAwardXp: addXp,
+      onAfterLogged: (tx) => {
+        autoCompleteLoggingQuest(addXp);
+        checkAchievements([tx, ...transactions], quests, allocations, savingsGoals);
+      },
+    });
+    const nextBills = recurringBills.map((item) => item.id === bill.id ? recordBillPayment(item, payment) : item);
+    persistRecurringBills(nextBills);
   };
 
   // Handle Quick Add Save
@@ -328,6 +369,7 @@ export default function App() {
     if (backup.taxProfile) setTaxProfile(backup.taxProfile);
     if (backup.presets) setPresets(backup.presets);
     if (backup.savingsGoals) setSavingsGoals(backup.savingsGoals);
+    if (backup.recurringBills) persistRecurringBills(backup.recurringBills);
     if (backup.gamification?.totalXp) {
       setTotalXp(backup.gamification.totalXp);
     }
@@ -339,6 +381,7 @@ export default function App() {
     await saveAllocations(SAMPLE_ALLOCATIONS);
     await saveAllQuests(SAMPLE_QUESTS);
     await saveAllSavingsGoals(INITIAL_SAVINGS_GOALS);
+    await saveSetting("recurringBills", []);
     await saveSetting("income", 48000);
     await saveSetting("totalXp", 180);
     await saveSetting("streakDays", 1);
@@ -349,6 +392,7 @@ export default function App() {
     setAllocationsState(SAMPLE_ALLOCATIONS);
     setQuestsState(SAMPLE_QUESTS);
     setSavingsGoals(INITIAL_SAVINGS_GOALS);
+    setRecurringBills([]);
     setIncomeState(48000);
     setTotalXp(180);
     setStreakDays(1);
@@ -409,6 +453,8 @@ export default function App() {
           allocations={allocations}
           income={income}
           activeMonth={activeMonth}
+          recurringBills={recurringBills}
+          savingsGoals={savingsGoals}
           presets={presets}
           setPresets={setPresets}
           onLogTransaction={handleLogQuickTransaction}
@@ -430,6 +476,7 @@ export default function App() {
                 onOpenQuickAdd={() => { setQuickAddType("expense"); setIsQuickAddOpen(true); }}
                 onOpenIncome={() => { setQuickAddType("income"); setIsQuickAddOpen(true); }}
                 savingsGoals={savingsGoals}
+                recurringBills={recurringBills}
               />
             </motion.div>
           )}
@@ -454,6 +501,9 @@ export default function App() {
                 setAllocations={setAllocations}
                 transactions={transactions}
                 activeMonth={activeMonth}
+                recurringBills={recurringBills}
+                onSaveBills={handleSaveRecurringBills}
+                onPayBill={handlePayRecurringBill}
               />
             </motion.div>
           )}
@@ -552,6 +602,7 @@ export default function App() {
           taxProfile={taxProfile}
           presets={presets}
           savingsGoals={savingsGoals}
+          recurringBills={recurringBills}
           onRestoreBackup={handleRestoreBackup}
           onImportTransactions={(txs) => { void importTransactions(txs, { onAwardXp: addXp }).catch(() => {}); }}
           onResetData={handleResetData}

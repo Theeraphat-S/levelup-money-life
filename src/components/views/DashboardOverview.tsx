@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   ChartLineUp,
+  CalendarDots,
   CheckCircle,
   Circle,
   Coins,
@@ -11,17 +12,21 @@ import {
   Scales,
   ShieldCheck,
   Sparkle,
+  Wallet,
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import { BentoCard } from "../common/BentoCard";
 import { MetricTile } from "../common/MetricTile";
 import { TactileButton } from "../common/TactileButton";
 import { FloatingReward, type FloatingRewardItem } from "../common/FloatingReward";
+import { UpcomingBillsSummary } from "../RecurringBills";
+import { calculateDailySafeToSpend, getLocalTodayISO } from "../../utils/safeToSpend";
 import {
   CATEGORY_BUCKET_MAP,
   CATEGORY_COLORS,
   type Allocation,
   type Quest,
+  type RecurringBill,
   type SavingsGoal,
   type Transaction,
   type ViewTab,
@@ -40,6 +45,7 @@ interface DashboardOverviewProps {
   onOpenQuickAdd: () => void;
   onOpenIncome?: () => void;
   savingsGoals?: SavingsGoal[];
+  recurringBills: RecurringBill[];
 }
 
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
@@ -53,8 +59,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onOpenQuickAdd,
   onOpenIncome,
   savingsGoals,
+  recurringBills,
 }) => {
   const { t } = useTranslation();
+  const shouldReduceMotion = useReducedMotion();
   const [floatingRewards, setFloatingRewards] = useState<FloatingRewardItem[]>([]);
 
   // Filter transactions for the selected month
@@ -94,6 +102,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     .slice(0, 5);
 
   const completedQuests = quests.filter((q) => q.done).length;
+  const today = getLocalTodayISO();
+  const safeToSpend = calculateDailySafeToSpend(transactions, allocations, income, activeMonth, today, {
+    recurringBills,
+    savingsGoals,
+  });
+  const reservedPercent = safeToSpend.monthSpendableBudget > 0
+    ? Math.min(100, Math.max(0, ((safeToSpend.monthSpent + safeToSpend.unpaidBillsTotal) / safeToSpend.monthSpendableBudget) * 100))
+    : 100;
 
   const handleQuestClick = (quest: Quest, e: React.MouseEvent) => {
     if (!quest.done) {
@@ -166,6 +182,43 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           subtext={t("ux.savedExplanation", { amount: thb.format(netSaved) })}
           tone={savingsRate >= 20 ? "jade" : "amber"}
         />
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <BentoCard className="lg:col-span-7" header={
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-bold tracking-tight text-[var(--color-ink)]">
+              <Wallet size={19} weight="duotone" className="text-[var(--primary)]" />
+              {t("safeToSpend.dashboardTitle")}
+            </h2>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${safeToSpend.status === "critical" ? "bg-[var(--rose-soft)] text-[var(--rose-ink)]" : safeToSpend.status === "caution" ? "bg-[var(--amber-soft)] text-[var(--amber-ink)]" : "bg-[var(--jade-soft)] text-[var(--jade-ink)]"}`}>
+              {t(`safeToSpend.${safeToSpend.status}`)}
+            </span>
+          </div>
+        }>
+          <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div>
+              <p className="text-xs font-semibold text-[var(--color-ink-soft)]">{t("safeToSpend.monthAvailable")}</p>
+              <p className={`mt-1 font-mono text-3xl font-bold tracking-tight ${safeToSpend.shortfall > 0 ? "text-[var(--rose-ink)]" : "text-[var(--jade-ink)]"}`}>฿{thb.format(Math.max(0, safeToSpend.monthRemaining))}</p>
+              {safeToSpend.shortfall > 0 && <p className="mt-1 text-xs font-semibold text-[var(--rose-ink)]">{t("safeToSpend.shortfall", { amount: thb.format(safeToSpend.shortfall) })}</p>}
+              {safeToSpend.shortfall === 0 && <p className="mt-1 text-xs text-[var(--color-ink-soft)]">{t("safeToSpend.daysLeft", { days: safeToSpend.daysRemainingInMonth })}</p>}
+            </div>
+            <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3.5 py-2.5 sm:text-right">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--color-ink-soft)] sm:justify-end"><CalendarDots size={13} />{activeMonth === today.slice(0, 7) ? t("safeToSpend.dailyAverage") : t("safeToSpend.monthLeft", { amount: "" }).replace(":", "")}</p>
+              <p className="mt-1 font-mono text-lg font-bold text-[var(--color-ink)]">฿{thb.format(activeMonth === today.slice(0, 7) ? safeToSpend.dailySafeToSpend : Math.max(0, safeToSpend.monthRemaining))}</p>
+            </div>
+          </div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-line)]" aria-label={`${Math.round(reservedPercent)}% of spendable budget used or reserved`}>
+            <motion.div className={`h-full rounded-full ${safeToSpend.shortfall > 0 ? "bg-[var(--rose)]" : "bg-[var(--jade)]"}`} initial={{ width: 0 }} animate={{ width: `${reservedPercent}%` }} transition={{ duration: shouldReduceMotion ? 0 : 0.35 }} />
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
+            <div><p className="text-[var(--color-ink-soft)]">{t("safeToSpend.monthSpent")}</p><p className="mt-0.5 font-mono font-bold text-[var(--color-ink)]">฿{thb.format(safeToSpend.monthSpent)}</p></div>
+            <div><p className="text-[var(--color-ink-soft)]">{t("safeToSpend.unpaidBills")}</p><p className="mt-0.5 font-mono font-bold text-[var(--color-ink)]">฿{thb.format(safeToSpend.unpaidBillsTotal)}</p></div>
+            <div><p className="text-[var(--color-ink-soft)]">{t("safeToSpend.plannedSavings")}</p><p className="mt-0.5 font-mono font-bold text-[var(--color-ink)]">฿{thb.format(safeToSpend.plannedSavingsAmount)}</p></div>
+          </div>
+          <p className="mt-3 text-[10px] leading-relaxed text-[var(--color-ink-faint)]">{t("ux.budgetExplanation", { amount: thb.format(income) })}</p>
+        </BentoCard>
+        <div className="lg:col-span-5"><UpcomingBillsSummary bills={recurringBills} transactions={transactions} activeMonth={activeMonth} setActiveTab={setActiveTab} /></div>
       </div>
 
       {/* Bento Row 1: Budget Health & Daily Quests */}

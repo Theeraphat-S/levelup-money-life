@@ -1,4 +1,9 @@
 import type { Allocation, DailySafeToSpend, Transaction } from "../types";
+import type { RecurringBill, SavingsGoal } from "../types";
+import { getDaysInMonth } from "./dates";
+import { getUnpaidBillOccurrences } from "./recurringBills";
+
+export { getDaysInMonth } from "./dates";
 
 /**
  * Returns the current date formatted as YYYY-MM-DD in local system time
@@ -14,17 +19,18 @@ export function getLocalTodayISO(): string {
 /**
  * Returns number of days in a given month (1-indexed month)
  */
-export function getDaysInMonth(year: number, month: number): number {
-  return new Date(year, month, 0).getDate();
-}
+export type SafeToSpendOptions = {
+  recurringBills?: RecurringBill[];
+  savingsGoals?: SavingsGoal[];
+};
 
 /**
  * Calculate Daily Safe-to-Spend metric and realtime budget feedback.
  *
  * Formula:
- * - Spendable Monthly Budget = Income * (Needs% + Wants%) / 100 [or Income - Savings allocation]
- * - Month Outflow = Sum of all expenses logged in the active month
- * - Month Remaining Spendable = Spendable Monthly Budget - Month Outflow
+ * - Planned Savings = the larger of the savings allocation and dated goal contributions
+ * - Spendable Monthly Budget = planned income - Planned Savings
+ * - Month Remaining Spendable = Spendable Monthly Budget - logged living expenses - unpaid bills
  * - Days Remaining = Days left in the month including today
  * - Daily allowance = (Month Remaining + Today Spent) / Days Remaining (clamped >= 0)
  * - Today Remaining = Daily Safe-to-Spend - Today's Logged Expenses
@@ -34,7 +40,8 @@ export function calculateDailySafeToSpend(
   allocations: Allocation[],
   expectedIncome: number,
   activeMonth: string, // "YYYY-MM"
-  currentDateIso?: string // "YYYY-MM-DD"
+  currentDateIso?: string, // "YYYY-MM-DD"
+  options: SafeToSpendOptions = {}
 ): DailySafeToSpend {
   const todayStr = currentDateIso || getLocalTodayISO();
   const [yearStr, monthStr] = activeMonth.split("-");
@@ -58,22 +65,35 @@ export function calculateDailySafeToSpend(
     daysRemainingInMonth = totalDaysInMonth;
   }
 
-  // Calculate Savings percentage from allocations (default 20% if not defined)
+  // Keep the savings allocation as a floor so dated goals never reserve the same savings twice.
   const savingsAlloc = allocations.find(
     (a) =>
       a.label.toLowerCase().includes("saving") ||
       a.id.toLowerCase().includes("saving")
   );
   const savingsPercent = savingsAlloc ? Math.min(100, Math.max(0, savingsAlloc.percent)) : 20;
-  const spendablePercent = Math.max(0, 100 - savingsPercent);
-
   // This is a forecast from the plan, not available cash. With no plan, use recorded income.
   const monthIncomeLogs = transactions
     .filter((tx) => tx.date.startsWith(activeMonth) && tx.amount > 0 && tx.category === "Income")
     .reduce((sum, tx) => sum + tx.amount, 0);
 
   const baselineIncome = Math.max(0, expectedIncome > 0 ? expectedIncome : monthIncomeLogs);
-  const monthSpendableBudget = Math.round((baselineIncome * spendablePercent) / 100);
+  const savingsAllocationAmount = Math.round((baselineIncome * savingsPercent) / 100);
+  const datedGoalContributions = (options.savingsGoals || [])
+    .filter((goal) => goal.status === "active" && goal.targetDate && goal.currentAmount < goal.targetAmount)
+    .reduce((sum, goal) => {
+      const targetMonth = goal.targetDate!.slice(0, 7);
+      const [targetYear, targetMonthNumber] = targetMonth.split("-").map(Number);
+      const [activeYear, activeMonthNumber] = activeMonth.split("-").map(Number);
+      const monthsRemaining = Math.max(1, (targetYear - activeYear) * 12 + targetMonthNumber - activeMonthNumber + 1);
+      return sum + Math.ceil((goal.targetAmount - goal.currentAmount) / monthsRemaining);
+    }, 0);
+  const plannedSavingsAmount = Math.max(savingsAllocationAmount, datedGoalContributions);
+  const monthSpendableBudget = Math.max(0, baselineIncome - plannedSavingsAmount);
+
+  const transactionIds = new Set(transactions.map((transaction) => transaction.id));
+  const unpaidBills = getUnpaidBillOccurrences(options.recurringBills || [], activeMonth, todayStr, transactionIds);
+  const unpaidBillsTotal = unpaidBills.reduce((sum, occurrence) => sum + occurrence.bill.amount, 0);
 
   // Month total expenses for spendable living budget (Needs + Wants)
   const monthSpent = Math.abs(
@@ -101,7 +121,7 @@ export function calculateDailySafeToSpend(
       .reduce((sum, tx) => sum + tx.amount, 0)
   );
 
-  const monthRemaining = monthSpendableBudget - monthSpent;
+  const monthRemaining = monthSpendableBudget - monthSpent - unpaidBillsTotal;
   const dailySafeToSpend =
     monthRemaining > 0
       ? Math.round((monthRemaining + todaySpent) / Math.max(1, daysRemainingInMonth))
@@ -125,9 +145,12 @@ export function calculateDailySafeToSpend(
     dailySafeToSpend,
     todayRemaining,
     todaySpent,
+    plannedSavingsAmount,
+    unpaidBillsTotal,
     monthSpendableBudget,
     monthSpent,
     monthRemaining,
+    shortfall: Math.max(0, -monthRemaining),
     daysRemainingInMonth,
     totalDaysInMonth,
     status,

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { calculateDailySafeToSpend, getDaysInMonth } from "./safeToSpend";
-import type { Allocation, Transaction } from "../types";
+import type { Allocation, RecurringBill, SavingsGoal, Transaction } from "../types";
 
 describe("safeToSpend", () => {
   const defaultAllocations: Allocation[] = [
@@ -294,6 +294,78 @@ describe("safeToSpend", () => {
     expect(result.daysRemainingInMonth).toBe(3);
     expect(result.dailySafeToSpend).toBe(1000);
     expect(result.todayRemaining).toBe(700);
+  });
+
+  it("reserves unpaid recurring bills and a savings goal commitment without double counting the savings allocation", () => {
+    const bills: RecurringBill[] = [
+      {
+        id: "rent",
+        name: "Rent",
+        amount: 5000,
+        category: "Home",
+        recurrence: "monthly",
+        dueDay: 10,
+        startsOn: "2026-10-10",
+        estimated: false,
+        active: true,
+        payments: [],
+      },
+    ];
+    const goal: SavingsGoal = {
+      id: "goal",
+      title: "Emergency fund",
+      category: "emergency",
+      targetAmount: 15000,
+      currentAmount: 0,
+      targetDate: "2026-10-31",
+      icon: "shield",
+      status: "active",
+      milestonesReached: [],
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+    const result = calculateDailySafeToSpend(
+      [{ id: "food", name: "Food", amount: -1000, date: "2026-10-03", category: "Food", cleared: true }],
+      defaultAllocations,
+      30000,
+      "2026-10",
+      "2026-10-04",
+      { recurringBills: bills, savingsGoals: [goal] }
+    );
+
+    expect(result.plannedSavingsAmount).toBe(15000);
+    expect(result.monthSpendableBudget).toBe(15000);
+    expect(result.unpaidBillsTotal).toBe(5000);
+    expect(result.monthRemaining).toBe(9000);
+    expect(result.shortfall).toBe(0);
+  });
+
+  it("reports the amount over plan when expenses and unpaid bills exceed the spendable budget", () => {
+    const bill: RecurringBill = {
+      id: "loan",
+      name: "Loan",
+      amount: 4000,
+      category: "Debt",
+      recurrence: "monthly",
+      dueDay: 1,
+      startsOn: "2026-10-01",
+      estimated: false,
+      active: true,
+      payments: [],
+    };
+    const result = calculateDailySafeToSpend(
+      [{ id: "food", name: "Food", amount: -28000, date: "2026-10-02", category: "Food", cleared: true }],
+      defaultAllocations,
+      30000,
+      "2026-10",
+      "2026-10-04",
+      { recurringBills: [bill] }
+    );
+
+    expect(result.monthRemaining).toBe(-8000);
+    expect(result.dailySafeToSpend).toBe(0);
+    expect(result.shortfall).toBe(8000);
+    expect(result.status).toBe("critical");
   });
 });
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { SAMPLE_TRANSACTIONS, SAMPLE_ALLOCATIONS, SAMPLE_QUESTS } from "../constants/sampleData";
+import { parseBackupJSON } from "./exportImport";
 
 describe("Sample Data & Defaults Integrity", () => {
   it("should have valid sample transactions", () => {
@@ -26,5 +27,12 @@ describe("Sample Data & Defaults Integrity", () => {
       expect(q.xp).toBeGreaterThan(0);
       expect(typeof q.done).toBe("boolean");
     });
+  });
+});
+
+describe("backup compatibility", () => {
+  it("loads recurring bills from new backups and accepts older backups without them", () => {
+    expect(parseBackupJSON('{"transactions":[],"recurringBills":[]}').recurringBills).toEqual([]);
+    expect(parseBackupJSON('{"transactions":[]}').recurringBills).toBeUndefined();
   });
 });

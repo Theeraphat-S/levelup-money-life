@@ -17,12 +17,15 @@ import {
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import { BentoCard } from "../common/BentoCard";
+import { RecurringBillsManager } from "../RecurringBills";
 import {
   BUCKET_COLORS,
   CATEGORY_BUCKET_MAP,
   CATEGORY_COLORS,
   type Allocation,
   type BudgetBucket,
+  type RecurringBill,
+  type RecurringBillPayment,
   type Transaction,
 } from "../../types";
 
@@ -35,6 +38,9 @@ interface BudgetPlannerProps {
   setAllocations: (val: Allocation[] | ((prev: Allocation[]) => Allocation[])) => void;
   transactions: Transaction[];
   activeMonth: string;
+  recurringBills: RecurringBill[];
+  onSaveBills: (bills: RecurringBill[]) => void;
+  onPayBill: (bill: RecurringBill, payment: RecurringBillPayment) => Promise<void>;
 }
 
 export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
@@ -44,6 +50,9 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
   setAllocations,
   transactions,
   activeMonth,
+  recurringBills,
+  onSaveBills,
+  onPayBill,
 }) => {
   const { t } = useTranslation();
 
@@ -325,6 +334,18 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
           );
         })}
       </div>
+
+      <BentoCard noPadding>
+        <div className="p-5 sm:p-6">
+          <RecurringBillsManager
+            bills={recurringBills}
+            transactions={transactions}
+            activeMonth={activeMonth}
+            onSaveBills={onSaveBills}
+            onPayBill={onPayBill}
+          />
+        </div>
+      </BentoCard>
 
       {/* Comparison Chart */}
       <BentoCard

@@ -23,6 +23,8 @@ import {
   type DailySafeToSpend,
   type ParsedQuickTransaction,
   type PresetItem,
+  type RecurringBill,
+  type SavingsGoal,
   type Transaction,
 } from "../types";
 import { parseQuickInput } from "../utils/quickParser";
@@ -42,6 +44,8 @@ interface QuickCommandBarProps {
   income: number;
   activeMonth: string;
   presets: PresetItem[];
+  recurringBills: RecurringBill[];
+  savingsGoals: SavingsGoal[];
   setPresets: (presets: PresetItem[]) => void;
   onLogTransaction: (tx: Transaction) => void | Promise<void>;
   onConfigureBudget?: () => void;
@@ -53,6 +57,8 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
   income,
   activeMonth,
   presets,
+  recurringBills,
+  savingsGoals,
   setPresets,
   onLogTransaction,
   onConfigureBudget,
@@ -80,9 +86,10 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       allocations,
       income,
       activeMonth,
-      todayStr
+      todayStr,
+      { recurringBills, savingsGoals }
     );
-  }, [transactions, allocations, income, activeMonth, todayStr]);
+  }, [transactions, allocations, income, activeMonth, todayStr, recurringBills, savingsGoals]);
   const hasBudget = income > 0 || transactions.some(tx => tx.date.startsWith(activeMonth) && tx.category === "Income" && tx.amount > 0);
 
   // 2. Realtime Parsed Natural Language State
@@ -323,7 +330,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
           >
             <span className={`h-2 w-2 rounded-full animate-pulse ${statusDotClass}`} />
             <span>
-              {!hasBudget ? t("ux.noPlan") : activeMonth === todayStr.slice(0, 7) ? t("safeToSpend.badge", { amount: thb.format(safeStats.dailySafeToSpend) }) : t("safeToSpend.monthLeft", { amount: thb.format(safeStats.monthRemaining) })}
+              {!hasBudget ? t("ux.noPlan") : activeMonth === todayStr.slice(0, 7) ? t("safeToSpend.badge", { amount: thb.format(safeStats.dailySafeToSpend) }) : t("safeToSpend.monthLeft", { amount: thb.format(Math.max(0, safeStats.monthRemaining)) })}
             </span>
             <span className={`text-xs font-normal opacity-90 ${hasBudget && activeMonth === todayStr.slice(0, 7) ? "hidden sm:inline" : "hidden"}`}>
               · {t("safeToSpend.todayLeft", { amount: thb.format(safeStats.todayRemaining) })}
@@ -344,8 +351,9 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
             className="overflow-hidden mb-3.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] p-3 text-xs"
           >
             <p className="mb-3 leading-relaxed">{t("ux.budgetExplanation", { amount: thb.format(income) })}</p>
+            {safeStats.shortfall > 0 && <p className="mb-3 font-semibold text-[var(--rose-ink)]">{t("safeToSpend.shortfall", { amount: thb.format(safeStats.shortfall) })}</p>}
             {!hasBudget && onConfigureBudget && <button type="button" onClick={onConfigureBudget} className="mb-3 text-sm font-semibold underline">{t("ux.reviewBudget")}</button>}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
                 <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
                   {t("safeToSpend.monthBudget", { amount: "" }).replace(":", "")}
@@ -364,10 +372,22 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               </div>
               <div>
                 <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
+                  {t("safeToSpend.unpaidBills")}
+                </div>
+                <div className="font-mono font-bold text-[var(--color-ink)]">฿{thb.format(safeStats.unpaidBillsTotal)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
+                  {t("safeToSpend.plannedSavings")}
+                </div>
+                <div className="font-mono font-bold text-[var(--color-ink)]">฿{thb.format(safeStats.plannedSavingsAmount)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
                   {t("safeToSpend.monthLeft", { amount: "" }).replace(":", "")}
                 </div>
                 <div className="font-mono font-bold text-[var(--jade-ink)]">
-                  ฿{thb.format(safeStats.monthRemaining)}
+                  ฿{thb.format(Math.max(0, safeStats.monthRemaining))}
                 </div>
               </div>
               <div hidden={activeMonth !== todayStr.slice(0, 7)}>

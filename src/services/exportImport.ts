@@ -1,4 +1,4 @@
-import type { Allocation, GamificationState, PresetItem, Quest, SavingsGoal, TaxProfile, Transaction, TransactionCategory } from "../types";
+import type { Allocation, GamificationState, PresetItem, Quest, RecurringBill, SavingsGoal, TaxProfile, Transaction, TransactionCategory } from "../types";
 import { TRANSACTION_CATEGORIES } from "../types";
 
 /**
@@ -138,6 +138,7 @@ export type BackupData = {
   taxProfile?: TaxProfile;
   presets?: PresetItem[];
   savingsGoals?: SavingsGoal[];
+  recurringBills?: RecurringBill[];
 };
 
 /**
@@ -145,7 +146,7 @@ export type BackupData = {
  */
 export function exportBackupJSON(data: Omit<BackupData, "version" | "exportedAt">): void {
   const fullBackup: BackupData = {
-    version: "3.0.0",
+    version: "4.0.0",
     exportedAt: new Date().toISOString(),
     ...data,
   };
