@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white&style=flat-square" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white&style=flat-square" alt="Tailwind CSS v4" />
   <img src="https://img.shields.io/badge/SQLite-Local--First-003B57?logo=sqlite&logoColor=white&style=flat-square" alt="SQLite" />
-  <img src="https://img.shields.io/badge/Vitest-107%20Passed-brightgreen?logo=vitest&logoColor=white&style=flat-square" alt="Vitest Tests" />
+  <img src="https://img.shields.io/badge/Vitest-119%20Passed-brightgreen?logo=vitest&logoColor=white&style=flat-square" alt="Vitest Tests" />
   <img src="https://img.shields.io/badge/OCR-Tesseract.js-5C6BC0?style=flat-square" alt="Tesseract.js OCR" />
   <img src="https://img.shields.io/badge/i18n-TH%20%7C%20EN-orange?style=flat-square" alt="i18n TH/EN" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
@@ -123,7 +123,7 @@
 
 #### 12. 🔒 100% Local-First & Private Data Management
 - **Zero Cloud Dependence**: Data stays strictly on your local machine in an embedded SQLite database (`@tauri-apps/plugin-sql`).
-- **JSON Backup & Snapshot Restore**: Export and import complete snapshots including custom presets and quest history.
+- **JSON Backup & Snapshot Restore**: Export and import complete snapshots including custom presets, quest history, recurring bills, and payment links.
 - **CSV Data Export**: Export clean transaction history for Excel, Google Sheets, or tax filings.
 
 #### 13. 🚀 First-Run Onboarding Wizard (`GettingStarted`)
@@ -134,6 +134,17 @@
 - **Complete Focus Trapping (`useDialogFocus`)**: Accessible modal dialog focus management, trapping keyboard navigation and restoring active elements upon close.
 - **WCAG AA Compliance**: High-contrast ratios, legible tabular numbers (`font-variant-numeric: tabular-nums`), and explicit keyboard focus rings (`outline: 2px solid var(--primary)`).
 - **Atomic Database Operations**: SQLite transaction protection utilizing SQL snapshot replacement (`INSERT OR REPLACE` with `json_each`) preventing partial writes or corrupt states.
+
+#### 15. 🧾 Recurring Bills & Monthly Planning
+- **Monthly and Yearly Bills**: Add, edit, and remove recurring bills with due dates and estimated amounts.
+- **Payment Confirmation**: Confirm or adjust the actual amount when a bill is paid; the payment is recorded in the ledger and linked to its bill occurrence.
+- **Due-Date Overview**: Review bills due in the selected month from the Dashboard and manage them in Budget. Unpaid bills are included in the safe-to-spend calculation for that month.
+- **Backup Support**: Recurring bills and payment links are included in JSON backups and restored with the rest of the local data.
+
+#### 16. 🌐 Thai and English Layout Consistency
+- **Stable Navigation**: Header badges reserve their space and navigation tabs use consistent widths, so switching between Thai and English keeps the header layout steady.
+- **Compact Thai Labels**: Thai navigation and rank names use concise localized labels instead of mixing Thai and English in the same button.
+- **Responsive Actions**: Tool actions show their icons on narrower screens and full labels on wide desktop screens; icon buttons retain localized accessible names.
 
 ---
 
@@ -159,12 +170,13 @@
 | 📜 **สมุดบัญชีสไตล์ Notion (Ledger)** | ตารางบันทึกข้อมูลความหนาแน่นสูง รองรับการค้นหา, กรองหมวดหมู่, จัดเรียง (Sort), และติ๊กสถานะเคลียร์ยอด |
 | 🎯 **วางแผนงบประมาณ 50/30/20 (Budget)** | จัดสรรสัดส่วน Needs / Wants / Savings เทียบยอดใช้จริงกับเป้าหมายแบบเรียลไทม์ |
 | 🐖 **เป้าหมายเงินออม & Sinking Funds (ใหม่)** | ระบบกระปุกออมเงินจัดสรรเป้าหมาย (ฉุกเฉิน, ท่องเที่ยว, ซื้อของ, ลงทุน) + คำนวณ Smart Pace ต่อเดือน + คำนวณเงินสำรองฉุกเฉิน 3-6 เดือนอัตโนมัติ + โบนัส Milestone XP (25, 50, 75, 100%) พร้อมซิงก์ลงสมุดบัญชีจริง |
+| 🧾 **วางแผนบิลประจำ** | เพิ่มบิลรายเดือน/รายปี ดูกำหนดชำระในเดือนที่เลือก และยืนยันยอดจ่ายจริงเพื่อบันทึกลงสมุดบัญชี พร้อมกันยอดบิลที่ยังไม่ชำระออกจาก Safe-to-Spend |
 | 🧮 **คำนวณภาษีเงินได้บุคคลธรรมดา (Tax Planner)** | คำนวณอัตราภาษีขั้นบันได 0%-35% พร้อมรองรับค่าลดหย่อนภาษีไทยครบวงจร (ประกันสังคม, กองทุน PVD, RMF, SSF, ThaiESG, Easy E-Receipt, ประกันชีวิต/สุขภาพ, ดอกเบี้ยบ้าน) |
 | 📊 **ศูนย์วิเคราะห์ข้อมูล (Analytics Hub)** | กราฟวงกลม Donut Chart และกราฟแท่งเปรียบเทียบสัดส่วนรายจ่ายแยกหมวดหมู่ |
 | ⚔️ **ระบบเควสต์ & เลเวล (Quests & Growth)** | ภารกิจรายวันเก็บ XP เลื่อนระดับจาก Novice สู่ Grandmaster พร้อมเหรียญความสำเร็จ |
 | 🧾 **สแกนสลิปโอนเงินอัจฉริยะ (Slip Scanner)** | ถอดข้อความจากภาพสลิปธนาคารไทย (KBank, SCB, PromptPay, BBL, KTB, TTB) ด้วย OCR ดึงยอดเงิน วันที่ และจัดหมวดหมู่อัตโนมัติ |
 | 💾 **จัดการข้อมูล & ความเป็นส่วนตัว (Data Manager)** | ข้อมูลเก็บในเครื่อง 100% ด้วย SQLite รองรับการ Backup/Restore ไฟล์ JSON, Export ตารางเป็น CSV |
-| 🎨 **ดีไซน์ระดับพรีเมียม & Bilingual** | รองรับ Dark/Light Mode, สลับภาษาไทย-อังกฤษได้ทันที, แอนิเมชันลื่นไหลด้วย Framer Motion |
+| 🎨 **ดีไซน์ระดับพรีเมียม & Bilingual** | รองรับ Dark/Light Mode และสลับภาษาไทย-อังกฤษโดยตำแหน่งเมนูและโครงส่วนหัวคงที่ พร้อมแอนิเมชันที่เคารพการตั้งค่าลดการเคลื่อนไหว |
 | 🚀 **ระบบแนะนำการเริ่มต้นใช้งาน (Getting Started)** | แนะนำขั้นตอนสำหรับผู้ใช้ใหม่ (Welcome, ทดลองดูข้อมูลจำลองในตาราง, กำหนดรายได้เริ่มต้น, ตรวจสอบงบประมาณ 50/30/20, และจดรายการแรก) พร้อมจดจำสถานะปิดถาวร |
 | ♿ **การเข้าถึง & ความทนทานระดับสูง (Accessibility & Resilience)** | รองรับการควบคุมด้วยคีย์บอร์ดเต็มรูปแบบ (Focus Trap บนทุก Modal Dialog), เส้นโฟกัสชัดเจนตามเกณฑ์ WCAG AA, ฟอนต์ตัวเลขจัดแนว Tabular, ป้องกันข้อมูลสูญหายด้วย SQLite Atomic Snapshot |
 
@@ -188,7 +200,7 @@ Frontend UI          React 19 + TypeScript + Vite
 Styling              Tailwind CSS v4 (@tailwindcss/postcss)
 Desktop Framework    Tauri v2 (Rust Native Core)
 Database Layer       SQLite (@tauri-apps/plugin-sql) — 100% Local-First
-Testing Engine       Vitest (88 Unit & Integration Tests Passing)
+Testing Engine       Vitest (119 Unit & Integration Tests Passing)
 OCR Engine           Tesseract.js + HTML5 Canvas Preprocessing
 Charts & Visuals     Recharts
 Motion & Animations  Framer Motion v12 (Spring Physics & Micro-Interactions)
@@ -222,6 +234,7 @@ LevelUp-Money-Life/
 │   │   │   ├── AnalyticsHub.tsx        # Charts & category spending distribution
 │   │   │   └── QuestsGrowth.tsx        # Gamified quests & achievement medals
 │   │   ├── GettingStarted.tsx       # 🚀 First-run onboarding wizard & guided checklist
+│   │   ├── RecurringBills.tsx       # Monthly/yearly bill planning and payment confirmation
 │   │   ├── QuickCommandBar.tsx      # ⚡ Fast single-line natural language input & 1-tap presets
 │   │   ├── PresetManagerModal.tsx   # ⚙️ Custom preset CRUD management dialog
 │   │   ├── UndoToast.tsx            # ↩️ 5-second countdown interactive undo notification
@@ -241,6 +254,7 @@ LevelUp-Money-Life/
 │   ├── utils/
 │   │   ├── quickParser.ts           # Natural language expense & category parser
 │   │   ├── presetManager.ts         # Preset CRUD & smart frequency suggestion engine
+│   │   ├── recurringBills.ts        # Due bill occurrences and payment records
 │   │   └── safeToSpend.ts           # Daily Safe-to-Spend calculation logic
 │   ├── types.ts                     # TypeScript domain definitions & color palettes
 │   ├── i18n.ts                      # Bilingual translations (TH / EN)

@@ -103,7 +103,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/40 dark:bg-white/10" />
 
       {/* Top Utility Row */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-[var(--color-line)] pb-5">
+      <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between border-b border-[var(--color-line)] pb-5">
         {/* Left: Branding & Level Gamification Banner */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <AppLogo size="md" variant="full" animated={false} />
@@ -114,15 +114,15 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab("quests")}
-            className="flex flex-col justify-center gap-1.5 min-w-[210px] text-left cursor-pointer group"
+            className="flex flex-col justify-center gap-1.5 min-w-[210px] text-left cursor-pointer group lg:w-[410px] lg:min-w-[410px]"
             title={t("tabs.quests")}
           >
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-md bg-[var(--jade-soft)] px-2 py-0.5 font-bold text-[var(--jade-ink)] border border-[var(--jade)]/20 shadow-xs group-hover:underline">
+                <span className="inline-flex items-center whitespace-nowrap rounded-md bg-[var(--jade-soft)] px-2 py-0.5 font-bold text-[var(--jade-ink)] border border-[var(--jade)]/20 shadow-xs group-hover:underline">
                   {t("header.levelBadge", { level: gamification.level, rank: t(gamification.titleRankKey) })}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-md bg-[var(--amber-soft)] px-1.5 py-0.5 font-bold text-[var(--amber-ink)] border border-[var(--amber)]/20 shadow-xs">
+                <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-[var(--amber-soft)] px-1.5 py-0.5 font-bold text-[var(--amber-ink)] border border-[var(--amber)]/20 shadow-xs">
                   <Flame size={12} weight="fill" className="text-[var(--amber)]" />
                   {t("header.streakBadge", { days: gamification.streakDays })}
                 </span>
@@ -149,19 +149,19 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
         </div>
 
         {/* Right: Month Selector, Theme Switcher, Quick Actions & Language */}
-        <div className="flex flex-wrap items-center gap-2.5 sm:self-end lg:self-center">
+        <div className="flex flex-wrap items-center gap-2.5 sm:self-end 2xl:self-center 2xl:flex-nowrap">
           {/* Month Switcher */}
           <div className="flex items-center rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] p-1 shadow-xs">
             <button
               type="button"
               onClick={prevMonth}
               className="rounded-lg p-1.5 text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] active:scale-[0.98] cursor-pointer"
-              aria-label="Previous Month"
+              aria-label={t("header.previousMonth")}
             >
               <CaretLeft size={16} weight="bold" />
             </button>
 
-            <span className="min-w-[120px] text-center text-xs font-semibold text-[var(--color-ink)] px-2">
+            <span className="w-[124px] shrink-0 whitespace-nowrap text-center text-xs font-semibold text-[var(--color-ink)] px-2">
               {formattedMonth}
             </span>
 
@@ -169,7 +169,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
               type="button"
               onClick={nextMonth}
               className="rounded-lg p-1.5 text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] active:scale-[0.98] cursor-pointer"
-              aria-label="Next Month"
+              aria-label={t("header.nextMonth")}
             >
               <CaretRight size={16} weight="bold" />
             </button>
@@ -248,7 +248,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
             className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface)] shadow-xs"
           >
             <Database size={15} weight="duotone" />
-            <span className="hidden sm:inline">{t("header.dataManager")}</span>
+            <span className="hidden 2xl:inline whitespace-nowrap">{t("header.dataManager")}</span>
           </TactileButton>
 
           {/* Scan Slip Button */}
@@ -260,8 +260,8 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
             className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary-soft)] px-3 py-2 text-xs font-semibold text-[var(--primary-ink)] transition hover:opacity-90 shadow-xs"
           >
             <Receipt size={15} weight="duotone" className="text-[var(--primary)]" />
-            <span>{t("header.scanSlip")}</span>
-            <span className="hidden sm:inline-flex items-center text-xs font-bold text-[var(--jade-ink)] opacity-90">
+            <span className="hidden 2xl:inline whitespace-nowrap">{t("header.scanSlip")}</span>
+            <span className="hidden 2xl:inline-flex items-center whitespace-nowrap text-xs font-bold text-[var(--jade-ink)] opacity-90">
               +25 XP
             </span>
           </TactileButton>
@@ -270,16 +270,18 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
           <TactileButton
             type="button"
             onClick={onOpenQuickAdd}
+            title={t("header.quickAdd")}
+            aria-label={t("header.quickAdd")}
             className="inline-flex items-center gap-1.5 rounded-xl bg-[#1C5954] text-[#FEFFFC] dark:bg-[#76AA9D] dark:text-[#071B1A] px-3.5 py-2 text-xs font-semibold transition hover:opacity-90 shadow-sm"
           >
             <Plus size={15} weight="bold" />
-            <span>{t("header.quickAdd")}</span>
+            <span className="hidden 2xl:inline whitespace-nowrap">{t("header.quickAdd")}</span>
           </TactileButton>
         </div>
       </div>
 
       {/* Bottom Nav Tabs */}
-      <nav className="mt-4 flex overflow-x-auto pb-1 gap-1.5 no-scrollbar" aria-label="Main Navigation">
+      <nav className="mt-4 flex overflow-x-auto pb-1 gap-1.5 no-scrollbar" aria-label={t("tabs.navigation")}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -288,7 +290,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
               type="button"
               onClick={() => setActiveTab(tab.id)}
               aria-current={isActive ? "page" : undefined}
-              className={`relative shrink-0 rounded-xl px-4 py-2 text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer ${
+              className={`relative h-10 w-40 shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-center text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer ${
                 isActive
                   ? "bg-[#1C5954] text-[#FEFFFC] dark:bg-[#76AA9D] dark:text-[#071B1A] shadow-sm"
                   : "bg-[var(--color-surface-subtle)] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] border border-[var(--color-line)]"
