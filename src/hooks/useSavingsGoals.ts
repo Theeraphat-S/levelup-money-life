@@ -5,7 +5,6 @@ import {
   saveSavingsGoal,
   saveAllSavingsGoals,
   deleteSavingsGoal as dbDeleteSavingsGoal,
-  INITIAL_SAVINGS_GOALS,
 } from "../services/db";
 import {
   checkGoalMilestones,
@@ -19,7 +18,7 @@ export type UseSavingsGoalsProps = {
 
 export function useSavingsGoals(props?: UseSavingsGoalsProps) {
   const { onAddTransaction, onAwardXp } = props || {};
-  const [goals, setGoals] = useState<SavingsGoal[]>(INITIAL_SAVINGS_GOALS);
+  const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load goals from DB

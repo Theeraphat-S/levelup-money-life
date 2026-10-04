@@ -107,7 +107,7 @@ export const MetricTile: React.FC<MetricTileProps> = ({
 
       <div className="relative z-10">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-soft)]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-soft)]">
             {label}
           </span>
           <div
@@ -131,7 +131,7 @@ export const MetricTile: React.FC<MetricTileProps> = ({
         </div>
 
         {subtext && (
-          <div className="mt-1 text-[11px] font-medium text-[var(--color-ink-faint)]">
+          <div className="mt-1 text-xs font-medium text-[var(--color-ink-faint)]">
             {subtext}
           </div>
         )}

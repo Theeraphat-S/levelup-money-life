@@ -11,7 +11,7 @@ export interface AppLogoProps {
 }
 
 const sizeMap = {
-  sm: { icon: 28, textClass: "text-lg", subClass: "text-[10px]" },
+  sm: { icon: 28, textClass: "text-lg", subClass: "text-xs" },
   md: { icon: 40, textClass: "text-xl sm:text-2xl", subClass: "text-xs" },
   lg: { icon: 52, textClass: "text-3xl", subClass: "text-sm" },
   xl: { icon: 68, textClass: "text-4xl", subClass: "text-base" },

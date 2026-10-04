@@ -26,7 +26,7 @@ import {
   type Transaction,
 } from "../../types";
 
-const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 interface BudgetPlannerProps {
   income: number;
@@ -240,7 +240,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
 
                 {/* Slider */}
                 <div>
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-ink-soft)] mb-1">
+                  <div className="flex items-center justify-between text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
                     <span>Allocation Slider</span>
                     <span className="font-mono text-[var(--color-ink)] font-bold">{percent}%</span>
                   </div>
@@ -280,7 +280,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                     />
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between text-[11px]">
+                  <div className="mt-2 flex items-center justify-between text-xs">
                     <span className="text-[var(--color-ink-soft)]">{consumedPct}% of budget</span>
                     <span
                       className={`font-semibold ${
@@ -296,7 +296,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
 
                 {/* Category breakdown under bucket */}
                 <div className="pt-2">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-ink-soft)] mb-2">
+                  <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-ink-soft)] mb-2">
                     Included Categories
                   </div>
                   <div className="space-y-1.5">

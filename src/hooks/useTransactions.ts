@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { saveAllTransactions } from "../services/db";
 import { DEFAULT_PRESETS, saveStoredPresets } from "../utils/presetManager";
 import type { PresetItem, Transaction } from "../types";
@@ -7,16 +7,29 @@ export function useTransactions() {
   const [transactions, setTransactionsState] = useState<Transaction[]>([]);
   const [presets, setPresetsState] = useState<PresetItem[]>(DEFAULT_PRESETS);
   const [lastLoggedTx, setLastLoggedTx] = useState<Transaction | null>(null);
+  const transactionsRef = useRef<Transaction[]>([]);
+  const writeQueue = useRef<Promise<void>>(Promise.resolve());
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+
+  const persistTransactions = useCallback((next: Transaction[]) => {
+    transactionsRef.current = next;
+    setTransactionsState(next);
+    setSaveStatus("saving");
+    const pending = writeQueue.current.catch(() => {}).then(() => saveAllTransactions(next));
+    writeQueue.current = pending;
+    pending.then(() => {
+      if (writeQueue.current === pending) setSaveStatus("saved");
+    }, () => { if (writeQueue.current === pending) setSaveStatus("failed"); });
+    return pending;
+  }, []);
 
   const setTransactions = useCallback(
     (value: Transaction[] | ((prev: Transaction[]) => Transaction[])) => {
-      setTransactionsState((prev) => {
-        const next = typeof value === "function" ? value(prev) : value;
-        saveAllTransactions(next).catch(console.error);
-        return next;
-      });
+      const next = typeof value === "function" ? value(transactionsRef.current) : value;
+      // Keep an unsaved working copy available for retry; never silently discard edits.
+      void persistTransactions(next).catch(() => {});
     },
-    []
+    [persistTransactions]
   );
 
   const setPresets = useCallback(
@@ -38,20 +51,21 @@ export function useTransactions() {
         onAfterLogged?: (newTx: Transaction) => void;
       }
     ) => {
-      setTransactions((prev) => [newTx, ...prev]);
-      setLastLoggedTx(newTx);
-      if (hooks?.onAwardXp) {
-        hooks.onAwardXp(15);
-      }
-      if (hooks?.onAfterLogged) {
-        hooks.onAfterLogged(newTx);
-      }
+      return persistTransactions([newTx, ...transactionsRef.current.filter(tx => tx.id !== newTx.id)]).then(() => {
+        setLastLoggedTx(newTx);
+        if (hooks?.onAwardXp) {
+          hooks.onAwardXp(15);
+        }
+        if (hooks?.onAfterLogged) {
+          hooks.onAfterLogged(newTx);
+        }
+      });
     },
-    [setTransactions]
+    [persistTransactions]
   );
 
   const undoTransaction = useCallback(
-    (
+    async (
       tx: Transaction,
       hooks?: {
         onDeductXp?: (xp: number) => void;
@@ -59,7 +73,7 @@ export function useTransactions() {
         undoNoticeMessage?: string;
       }
     ) => {
-      setTransactions((prev) => prev.filter((item) => item.id !== tx.id));
+      await persistTransactions(transactionsRef.current.filter(item => item.id !== tx.id));
       setLastLoggedTx(null);
       if (hooks?.onDeductXp) {
         hooks.onDeductXp(15);
@@ -68,14 +82,14 @@ export function useTransactions() {
         hooks.onToast(hooks.undoNoticeMessage);
       }
     },
-    [setTransactions]
+    [persistTransactions]
   );
 
   // Alias for semantic clarity when saving from QuickAddModal
   const saveQuickTransaction = logQuickTransaction;
 
   const saveSlipTransaction = useCallback(
-    (
+    async (
       newTx: Transaction,
       xpBonus = 25,
       hooks?: {
@@ -85,7 +99,7 @@ export function useTransactions() {
         toastMessage?: string;
       }
     ) => {
-      setTransactions((prev) => [newTx, ...prev]);
+      await persistTransactions([newTx, ...transactionsRef.current.filter(tx => tx.id !== newTx.id)]);
       if (hooks?.onAwardXp) {
         hooks.onAwardXp(xpBonus);
       }
@@ -96,11 +110,11 @@ export function useTransactions() {
         hooks.onToast(hooks.toastMessage);
       }
     },
-    [setTransactions]
+    [persistTransactions]
   );
 
   const saveBatchSlipTransactions = useCallback(
-    (
+    async (
       newTxs: Transaction[],
       totalXpBonus: number,
       hooks?: {
@@ -111,7 +125,7 @@ export function useTransactions() {
       }
     ) => {
       if (!newTxs || newTxs.length === 0) return;
-      setTransactions((prev) => [...newTxs, ...prev]);
+      await persistTransactions([...newTxs, ...transactionsRef.current.filter(tx => !newTxs.some(next => next.id === tx.id))]);
       if (hooks?.onAwardXp) {
         hooks.onAwardXp(totalXpBonus);
       }
@@ -122,26 +136,27 @@ export function useTransactions() {
         hooks.onToast(hooks.toastMessage);
       }
     },
-    [setTransactions]
+    [persistTransactions]
   );
 
   const importTransactions = useCallback(
-    (
+    async (
       imported: Transaction[],
       hooks?: {
         onAwardXp?: (xp: number) => void;
       }
     ) => {
-      setTransactions((prev) => [...imported, ...prev]);
+      await persistTransactions([...imported, ...transactionsRef.current]);
       if (hooks?.onAwardXp) {
         hooks.onAwardXp(imported.length * 10);
       }
     },
-    [setTransactions]
+    [persistTransactions]
   );
 
   const initTransactions = useCallback(
     (initialTxs: Transaction[], initialPresets: PresetItem[]) => {
+      transactionsRef.current = initialTxs;
       setTransactionsState(initialTxs);
       setPresetsState(initialPresets);
     },
@@ -150,8 +165,10 @@ export function useTransactions() {
 
   return {
     transactions,
+    saveStatus,
+    retrySave: () => persistTransactions(transactionsRef.current),
     setTransactions,
-    setTransactionsState,
+    setTransactionsState: (txs: Transaction[]) => { transactionsRef.current = txs; setTransactionsState(txs); },
     presets,
     setPresets,
     setPresetsState,

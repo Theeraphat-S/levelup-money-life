@@ -84,8 +84,9 @@ describe("safeToSpend", () => {
     expect(result.todaySpent).toBe(180);
     expect(result.monthRemaining).toBe(23220);
     expect(result.daysRemainingInMonth).toBe(8);
-    expect(result.dailySafeToSpend).toBe(2903);
-    expect(result.todayRemaining).toBe(2723);
+    // Set today's allowance from the balance before today's expenses.
+    expect(result.dailySafeToSpend).toBe(2925);
+    expect(result.todayRemaining).toBe(2745);
     expect(result.status).toBe("comfortable");
   });
 
@@ -191,8 +192,8 @@ describe("safeToSpend", () => {
     expect(result.monthSpent).toBe(100);
     expect(result.todaySpent).toBe(100);
     expect(result.monthRemaining).toBe(39900);
-    expect(result.dailySafeToSpend).toBe(4988);
-    expect(result.todayRemaining).toBe(4888);
+    expect(result.dailySafeToSpend).toBe(5000);
+    expect(result.todayRemaining).toBe(4900);
     expect(result.status).toBe("comfortable");
   });
 
@@ -266,6 +267,33 @@ describe("safeToSpend", () => {
       "2026-08-24"
     );
     expect(past.daysRemainingInMonth).toBe(1);
+  });
+
+  it("does not mix today's spending into historical or future budgets", () => {
+    const tx: Transaction = { id: "today", name: "Coffee", amount: -100, date: "2026-08-24", category: "Food", cleared: true };
+    for (const month of ["2026-07", "2026-09"]) {
+      const result = calculateDailySafeToSpend([tx], defaultAllocations, 30000, month, "2026-08-24");
+      expect(result.todaySpent).toBe(0);
+      expect(result.monthSpent).toBe(0);
+    }
+  });
+
+  it("does not treat savings withdrawals as income or inflate a planned budget", () => {
+    const txs: Transaction[] = [
+      { id: "saving", name: "Withdraw savings", amount: 100000, date: "2026-08-24", category: "Savings", cleared: true },
+      { id: "salary", name: "Salary", amount: 40000, date: "2026-08-01", category: "Income", cleared: true },
+    ];
+    expect(calculateDailySafeToSpend(txs, defaultAllocations, 20000, "2026-08", "2026-08-24").monthSpendableBudget).toBe(16000);
+    expect(calculateDailySafeToSpend(txs.slice(0, 1), defaultAllocations, 0, "2026-08", "2026-08-24").monthSpendableBudget).toBe(0);
+  });
+
+  it("subtracts today's expense only once from today's allowance", () => {
+    const tx: Transaction = { id: "lunch", name: "Lunch", amount: -300, date: "2026-05-29", category: "Food", cleared: true };
+    const result = calculateDailySafeToSpend([tx], [{ id: "savings", label: "Savings", percent: 0, color: "green" }], 3000, "2026-05", "2026-05-29");
+    expect(result.monthRemaining).toBe(2700);
+    expect(result.daysRemainingInMonth).toBe(3);
+    expect(result.dailySafeToSpend).toBe(1000);
+    expect(result.todayRemaining).toBe(700);
   });
 });
 

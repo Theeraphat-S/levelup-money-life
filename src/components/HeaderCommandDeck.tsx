@@ -5,18 +5,16 @@ import {
   CaretRight,
   Database,
   Desktop,
-  Fire,
+  Flame,
   Moon,
   Plus,
   Receipt,
-  Sparkle,
   Sun,
-  Trophy,
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "./AppLogo";
-import { TactileButton } from "./common/TactileButton";
 import { AnimatedCounter } from "./common/AnimatedCounter";
+import { TactileButton } from "./common/TactileButton";
 import type { GamificationState, ThemeMode, ViewTab } from "../types";
 
 interface HeaderCommandDeckProps {
@@ -80,7 +78,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
 
   const levelProgressPct = Math.min(
     100,
-    Math.round((gamification.currentLevelXp / gamification.xpForNextLevel) * 100)
+    Math.round((gamification.currentLevelXp / Math.max(1, gamification.xpForNextLevel)) * 100)
   );
 
   const tabs: { id: ViewTab; label: string }[] = [
@@ -107,39 +105,28 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
       {/* Top Utility Row */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-[var(--color-line)] pb-5">
         {/* Left: Branding & Level Gamification Banner */}
-        <div className="flex-1">
-          <div className="mb-2 flex flex-wrap items-center gap-2.5">
-            {/* Level & Rank Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--jade)]/30 bg-[var(--jade-soft)] px-3 py-1 text-xs font-semibold text-[var(--jade-ink)] shadow-xs">
-              <Trophy size={14} weight="fill" className="text-[var(--jade)]" />
-              <span>
-                {t("header.levelBadge", {
-                  level: gamification.level,
-                  rank: t(gamification.titleRankKey),
-                })}
-              </span>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <AppLogo size="md" variant="full" animated={false} />
 
-            {/* Streak Counter Badge */}
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-[var(--amber)]/30 bg-[var(--amber-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--amber-ink)] shadow-xs">
-              <Fire size={14} weight="fill" className="text-[var(--amber)]" />
-              <span>{t("header.streakBadge", { days: gamification.streakDays })}</span>
-            </div>
-          </div>
+          <div className="hidden sm:block h-8 w-px bg-[var(--color-line)]" />
 
-          <div className="flex items-center justify-between">
-            <div>
-              <AppLogo size="md" variant="full" animated={true} />
-              <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                {t("app.subtitle")}
-              </p>
-            </div>
-          </div>
-
-          {/* XP Progress Bar */}
-          <div className="mt-3 max-w-md">
-            <div className="flex items-center justify-between text-[11px] font-medium text-[var(--color-ink-soft)]">
-              <span>{t("rank." + gamification.titleRankKey.replace("rank.", ""))}</span>
+          {/* Gamification Level & Streak Quick Badge */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("quests")}
+            className="flex flex-col justify-center gap-1.5 min-w-[210px] text-left cursor-pointer group"
+            title={t("tabs.quests")}
+          >
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center rounded-md bg-[var(--jade-soft)] px-2 py-0.5 font-bold text-[var(--jade-ink)] border border-[var(--jade)]/20 shadow-xs group-hover:underline">
+                  {t("header.levelBadge", { level: gamification.level, rank: t(gamification.titleRankKey) })}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-[var(--amber-soft)] px-1.5 py-0.5 font-bold text-[var(--amber-ink)] border border-[var(--amber)]/20 shadow-xs">
+                  <Flame size={12} weight="fill" className="text-[var(--amber)]" />
+                  {t("header.streakBadge", { days: gamification.streakDays })}
+                </span>
+              </div>
               <span className="font-mono text-[var(--jade-ink)] font-semibold flex items-center gap-1">
                 <span>XP:</span>
                 <AnimatedCounter
@@ -158,7 +145,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
                 transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
               />
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Right: Month Selector, Theme Switcher, Quick Actions & Language */}
@@ -168,7 +155,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
             <button
               type="button"
               onClick={prevMonth}
-              className="rounded-lg p-1.5 text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] cursor-pointer"
+              className="rounded-lg p-1.5 text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] active:scale-[0.98] cursor-pointer"
               aria-label="Previous Month"
             >
               <CaretLeft size={16} weight="bold" />
@@ -181,7 +168,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
             <button
               type="button"
               onClick={nextMonth}
-              className="rounded-lg p-1.5 text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] cursor-pointer"
+              className="rounded-lg p-1.5 text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] active:scale-[0.98] cursor-pointer"
               aria-label="Next Month"
             >
               <CaretRight size={16} weight="bold" />
@@ -191,7 +178,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveMonth(currentMonthISO)}
-                className="ml-1 rounded-md bg-[var(--color-surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--primary-ink)] border border-[var(--color-line)] hover:bg-[var(--primary-soft)] cursor-pointer"
+                className="ml-1 rounded-md bg-[var(--color-surface)] px-2 py-0.5 text-xs font-semibold text-[var(--primary-ink)] border border-[var(--color-line)] hover:bg-[var(--primary-soft)] active:scale-[0.98] cursor-pointer"
               >
                 {t("header.currentMonth")}
               </button>
@@ -241,7 +228,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
                 key={lng}
                 type="button"
                 onClick={() => i18n.changeLanguage(lng)}
-                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition active:scale-[0.98] cursor-pointer ${
                   currentLang === lng
                     ? "bg-[#1C5954] text-[#FEFFFC] dark:bg-[#76AA9D] dark:text-[#071B1A] shadow-xs"
                     : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
@@ -274,7 +261,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
           >
             <Receipt size={15} weight="duotone" className="text-[var(--primary)]" />
             <span>{t("header.scanSlip")}</span>
-            <span className="hidden sm:inline-flex items-center text-[10px] font-bold text-[var(--jade-ink)] opacity-90">
+            <span className="hidden sm:inline-flex items-center text-xs font-bold text-[var(--jade-ink)] opacity-90">
               +25 XP
             </span>
           </TactileButton>
@@ -300,7 +287,8 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`relative shrink-0 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+              aria-current={isActive ? "page" : undefined}
+              className={`relative shrink-0 rounded-xl px-4 py-2 text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer ${
                 isActive
                   ? "bg-[#1C5954] text-[#FEFFFC] dark:bg-[#76AA9D] dark:text-[#071B1A] shadow-sm"
                   : "bg-[var(--color-surface-subtle)] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] border border-[var(--color-line)]"

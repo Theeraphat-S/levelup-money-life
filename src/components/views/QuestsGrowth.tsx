@@ -113,7 +113,7 @@ export const QuestsGrowth: React.FC<QuestsGrowthProps> = ({
               <Fire size={32} weight="fill" />
             </div>
             <div>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-[var(--amber-ink)]">
+              <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[var(--amber-ink)]">
                 Discipline Streak
               </span>
               <h2 className="text-xl font-bold tracking-tight text-[var(--color-ink)] flex items-center gap-1.5">
@@ -158,7 +158,7 @@ export const QuestsGrowth: React.FC<QuestsGrowthProps> = ({
                       : "border-[var(--color-line)] bg-[var(--color-surface-subtle)] text-[var(--color-ink-soft)] opacity-60"
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[11px] font-mono font-bold">
+                  <div className="flex items-center justify-between text-xs font-mono font-bold">
                     <span>Lv. {r.level}+</span>
                     {isPassed ? (
                       <CheckCircle size={14} weight="fill" className="text-[var(--jade)]" />
@@ -274,7 +274,7 @@ export const QuestsGrowth: React.FC<QuestsGrowthProps> = ({
                   >
                     {quest.title}
                   </span>
-                  <span className="font-mono text-[10px] text-[var(--color-ink-soft)]">
+                  <span className="font-mono text-xs text-[var(--color-ink-soft)]">
                     {quest.date}
                   </span>
                 </div>
@@ -355,12 +355,12 @@ export const QuestsGrowth: React.FC<QuestsGrowthProps> = ({
                   <h4 className="text-xs font-bold text-[var(--color-ink)]">
                     {t(ach.titleKey)}
                   </h4>
-                  <p className="mt-1 text-[11px] text-[var(--color-ink-soft)] leading-relaxed">
+                  <p className="mt-1 text-xs text-[var(--color-ink-soft)] leading-relaxed">
                     {t(ach.descKey)}
                   </p>
                 </div>
 
-                <div className="mt-3 border-t border-[var(--color-line)] pt-2 text-[10px] text-[var(--color-ink-faint)] font-mono">
+                <div className="mt-3 border-t border-[var(--color-line)] pt-2 text-xs text-[var(--color-ink-faint)] font-mono">
                   {ach.unlocked ? (
                     <span className="text-[var(--jade-ink)] font-semibold">
                       {t("quests.unlockedAt", { date: ach.unlockedAt || today })}

@@ -4,13 +4,14 @@ import { ArrowUUpLeft, CheckCircle, Sparkle, X } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { Transaction } from "../types";
 
-const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 interface UndoToastProps {
   transaction: Transaction | null;
   xpAwarded?: number;
   onUndo: (tx: Transaction) => void;
   onDismiss: () => void;
+  onView?: (tx: Transaction) => void;
   durationMs?: number; // default 5000ms
 }
 
@@ -19,6 +20,7 @@ export const UndoToast: React.FC<UndoToastProps> = ({
   xpAwarded = 15,
   onUndo,
   onDismiss,
+  onView,
   durationMs = 5000,
 }) => {
   const { t } = useTranslation();
@@ -97,7 +99,7 @@ export const UndoToast: React.FC<UndoToastProps> = ({
                     {transaction.amount >= 0 ? "+" : "-"}฿{thb.format(Math.abs(transaction.amount))}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-ink-soft)]">
+                <div className="flex items-center gap-1.5 text-xs text-[var(--color-ink-soft)]">
                   <span>{t(`category.${transaction.category}`)}</span>
                   <span>·</span>
                   <span className="inline-flex items-center gap-0.5 font-bold text-[var(--jade-ink)]">
@@ -110,6 +112,7 @@ export const UndoToast: React.FC<UndoToastProps> = ({
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 shrink-0 ml-1">
+              {onView && <button type="button" onClick={() => onView(transaction)} className="rounded-lg px-2 py-2 text-xs font-semibold underline text-[var(--primary-ink)] transition active:scale-[0.98] cursor-pointer">{t("ux.viewTransaction")}</button>}
               <button
                 type="button"
                 onClick={() => onUndo(transaction)}

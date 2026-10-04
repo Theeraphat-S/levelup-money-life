@@ -31,7 +31,7 @@ import {
   type TransactionCategory,
 } from "../../types";
 
-const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 interface AnalyticsHubProps {
   transactions: Transaction[];
@@ -47,10 +47,10 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
 
   const monthRows = transactions.filter((row) => row.date.startsWith(activeMonth));
   const income = monthRows
-    .filter((row) => row.amount > 0)
+    .filter((row) => row.amount > 0 && row.category === "Income")
     .reduce((s, r) => s + r.amount, 0);
   const expenses = Math.abs(
-    monthRows.filter((row) => row.amount < 0).reduce((s, r) => s + r.amount, 0)
+    monthRows.filter((row) => row.amount < 0 && row.category !== "Savings").reduce((s, r) => s + r.amount, 0)
   );
   const net = income - expenses;
 
@@ -58,12 +58,13 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
   const [yearStr, monthStr] = activeMonth.split("-");
   const daysInMonth = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10), 0).getDate();
   const burnRate = Math.round(expenses / (daysInMonth || 30));
-  const savingsRate = income > 0 ? Math.max(0, Math.round(((income - expenses) / income) * 100)) : 0;
+  const netSaved = monthRows.filter(row => row.category === "Savings").reduce((sum, row) => sum - row.amount, 0);
+  const savingsRate = income > 0 ? Math.round(netSaved / income * 100) : 0;
 
   // Category breakdown
   const categoryTotals: Record<string, number> = {};
   monthRows
-    .filter((r) => r.amount < 0)
+    .filter((r) => r.amount < 0 && r.category !== "Savings")
     .forEach((r) => {
       categoryTotals[r.category] = (categoryTotals[r.category] || 0) + Math.abs(r.amount);
     });
@@ -130,7 +131,8 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
         <MetricTile
           icon={<PiggyBank size={18} weight="duotone" />}
           label={t("metric.savingsRate")}
-          value={`${savingsRate}%`}
+          value={income > 0 ? `${savingsRate}%` : "—"}
+          subtext={t("ux.savedExplanation", { amount: thb.format(netSaved) })}
           tone={savingsRate >= 20 ? "jade" : "amber"}
         />
         <MetricTile
@@ -294,7 +296,7 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
               {chartType === "donut" && (
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                   <span
-                    className="text-[10px] font-bold uppercase tracking-wider text-[var(--ink-soft)]"
+                    className="text-xs font-bold uppercase tracking-wider text-[var(--ink-soft)]"
                     style={{ color: "var(--ink-soft)" }}
                   >
                     Total Outflow

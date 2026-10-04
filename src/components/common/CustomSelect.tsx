@@ -172,7 +172,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           {selectedOption?.badge && (
-            <span className="rounded-md bg-[var(--primary-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--primary-ink)]">
+            <span className="rounded-md bg-[var(--primary-soft)] px-1.5 py-0.5 text-xs font-semibold text-[var(--primary-ink)]">
               {selectedOption.badge}
             </span>
           )}
@@ -248,7 +248,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     )}
                     <span className="truncate">{opt.label}</span>
                     {opt.badge && (
-                      <span className="ml-1 rounded bg-[var(--primary-soft)] px-1.5 py-0.2 text-[10px] font-semibold text-[var(--primary-ink)]">
+                      <span className="ml-1 rounded bg-[var(--primary-soft)] px-1.5 py-0.2 text-xs font-semibold text-[var(--primary-ink)]">
                         {opt.badge}
                       </span>
                     )}

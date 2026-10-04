@@ -26,7 +26,7 @@ import {
   type TransactionCategory,
 } from "../../types";
 
-const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 interface TransactionLedgerProps {
   transactions: Transaction[];
@@ -49,6 +49,8 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
   const [isMonthScoped, setIsMonthScoped] = useState(true);
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [drafts, setDrafts] = useState<Record<string, { name?: string; amount?: string }>>({});
+  const [editError, setEditError] = useState("");
   const [lastDeleted, setLastDeleted] = useState<Transaction | null>(null);
 
   const toggleSort = (field: SortField) => {
@@ -64,6 +66,16 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
     setTransactions((rows) =>
       rows.map((row) => (row.id === id ? { ...row, ...patch } : row))
     );
+  };
+
+  const commitDraft = (row: Transaction, field: "name" | "amount") => {
+    const draft = drafts[row.id]?.[field];
+    if (draft === undefined) return;
+    if (field === "name" && !draft.trim()) { setEditError(t("ux.descriptionRequired")); return; }
+    if (field === "amount" && (!draft.trim() || !Number.isFinite(Number(draft)) || Number(draft) <= 0)) { setEditError(t("ux.amountRequired")); return; }
+    updateRow(row.id, field === "name" ? { name: draft.trim() } : { amount: (row.amount >= 0 ? 1 : -1) * Number(draft) });
+    setEditError("");
+    setDrafts(previous => ({ ...previous, [row.id]: { ...previous[row.id], [field]: undefined } }));
   };
 
   const deleteRow = (row: Transaction) => {
@@ -290,7 +302,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
           <button
             type="button"
             onClick={clearFilters}
-            className="text-[11px] font-sans font-semibold text-[var(--primary-ink)] hover:underline"
+            className="text-xs font-sans font-semibold text-[var(--primary-ink)] hover:underline"
           >
             {t("expense.clearFilters")}
           </button>
@@ -298,10 +310,11 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
       </div>
 
       {/* Main Table */}
+      {editError && <p role="alert" className="mb-3 text-sm text-[var(--rose-ink)]">{editError}</p>}
       <div className="overflow-x-auto">
-        <table className="min-w-full border-separate border-spacing-0 text-xs">
+        <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead>
-            <tr className="border-b border-[var(--color-line)] text-left text-[10px] font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
+            <tr className="border-b border-[var(--color-line)] text-left text-xs font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
               <th
                 onClick={() => toggleSort("name")}
                 className="cursor-pointer px-6 py-3 hover:text-[var(--color-ink)]"
@@ -362,12 +375,15 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
                       <div>
                         <input
                           type="text"
-                          value={row.name}
-                          onChange={(e) => updateRow(row.id, { name: e.target.value })}
+                          aria-label={t("expense.name")}
+                          value={drafts[row.id]?.name ?? row.name}
+                          onBlur={() => commitDraft(row, "name")}
+                          onKeyDown={event => { if (event.key === "Enter") event.currentTarget.blur(); }}
+                          onChange={event => setDrafts(previous => ({ ...previous, [row.id]: { ...previous[row.id], name: event.target.value } }))}
                           className="w-full bg-transparent font-medium text-[var(--color-ink)] outline-none focus:rounded-md focus:bg-[var(--color-surface)] focus:px-1.5 focus:py-0.5 focus:ring-1 focus:ring-[var(--primary)]"
                         />
                         {row.notes && (
-                          <div className="text-[10px] text-[var(--color-ink-soft)] font-medium">
+                          <div className="text-xs text-[var(--color-ink-soft)] font-medium">
                             {row.notes}
                           </div>
                         )}
@@ -379,7 +395,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
                       {isPositive ? (
                         <span className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--jade)]/30 bg-[var(--jade-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--jade-ink)]">
                           <span className="h-1.5 w-1.5 rounded-full bg-[var(--jade)]" />
-                          {t("category.Income")}
+                          {t(`category.${row.category}`)}
                         </span>
                       ) : (
                         <CustomSelect
@@ -418,12 +434,12 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
                           type="number"
                           step="any"
                           min="0"
-                          value={Math.abs(row.amount)}
-                          onChange={(e) => {
-                            const val = Math.abs(parseFloat(e.target.value) || 0);
-                            updateRow(row.id, { amount: isPositive ? val : -val });
-                          }}
-                          className={`w-24 text-right bg-transparent font-mono text-xs font-bold outline-none focus:rounded-md focus:bg-[var(--color-surface)] focus:px-1 focus:ring-1 focus:ring-[var(--primary)] ${
+                          aria-label={t("expense.amount")}
+                          value={drafts[row.id]?.amount ?? String(Math.abs(row.amount))}
+                          onBlur={() => commitDraft(row, "amount")}
+                          onKeyDown={event => { if (event.key === "Enter") event.currentTarget.blur(); }}
+                          onChange={event => setDrafts(previous => ({ ...previous, [row.id]: { ...previous[row.id], amount: event.target.value } }))}
+                          className={`w-24 text-right bg-transparent font-mono text-sm font-bold outline-none focus:rounded-md focus:bg-[var(--color-surface)] focus:px-1 focus:ring-1 focus:ring-[var(--primary)] ${
                             isPositive ? "text-[var(--jade-ink)]" : "text-[var(--rose-ink)]"
                           }`}
                         />
@@ -435,7 +451,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
                       <button
                         type="button"
                         onClick={() => updateRow(row.id, { cleared: !row.cleared })}
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold transition ${
                           row.cleared
                             ? "bg-[var(--jade-soft)] text-[var(--jade-ink)] border border-[var(--jade)]/30"
                             : "bg-[var(--amber-soft)] text-[var(--amber-ink)] border border-[var(--amber)]/30"
@@ -473,17 +489,17 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
         {sorted.length === 0 && (
           <div className="py-12 text-center">
             <h3 className="text-sm font-bold text-[var(--color-ink)]">
-              {t("expense.noResultsTitle")}
+              {t(activeFilterCount ? "expense.noResultsTitle" : "ux.emptyMonth")}
             </h3>
             <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-              {t("expense.noResultsHint")}
+              {activeFilterCount ? t("expense.noResultsHint") : activeMonth}
             </p>
             <button
               type="button"
-              onClick={clearFilters}
+              onClick={activeFilterCount ? clearFilters : onOpenQuickAdd}
               className="mt-4 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-1.5 text-xs font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-subtle)]"
             >
-              {t("expense.clearFilters")}
+              {t(activeFilterCount ? "expense.clearFilters" : "ux.addEntry")}
             </button>
           </div>
         )}

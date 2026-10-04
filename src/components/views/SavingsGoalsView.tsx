@@ -35,7 +35,7 @@ import {
   XP_PER_SAVINGS_DEPOSIT,
 } from "../../utils/savingsGoals";
 
-const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   ShieldCheck: <ShieldCheck size={20} weight="fill" />,
@@ -358,7 +358,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
               suffix=" / mo"
               className="font-mono text-xl font-black text-[var(--primary)]"
             />
-            <p className="mt-0.5 text-[10px] text-[var(--color-ink-faint)]">
+            <p className="mt-0.5 text-xs text-[var(--color-ink-faint)]">
               {t("savings.monthlyPaceDesc")}
             </p>
           </div>
@@ -392,7 +392,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                       <h3 className="text-base font-bold text-[var(--color-ink)] flex items-center gap-2">
                         {goal.title}
                         {isCompleted && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--jade-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--jade-ink)] border border-[var(--jade)]/30">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--jade-soft)] px-2 py-0.5 text-xs font-bold text-[var(--jade-ink)] border border-[var(--jade)]/30">
                             <CheckCircle size={12} weight="fill" />
                             {t("savings.completed")}
                           </span>
@@ -460,7 +460,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                   </div>
 
                   {/* Milestone Pins */}
-                  <div className="flex justify-between items-center px-1 pt-0.5 text-[10px] font-mono text-[var(--color-ink-faint)]">
+                  <div className="flex justify-between items-center px-1 pt-0.5 text-xs font-mono text-[var(--color-ink-faint)]">
                     {SAVINGS_MILESTONES.map((m) => {
                       const isReached = goal.milestonesReached.includes(m) || pace.progressPercent >= m;
                       return (
@@ -514,7 +514,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                           ฿{thb.format(pace.requiredPerMonth)} / mo
                         </span>
                         {pace.requiredPerDay > 0 && (
-                          <span className="text-[10px] text-[var(--color-ink-soft)] font-normal">
+                          <span className="text-xs text-[var(--color-ink-soft)] font-normal">
                             (~฿{thb.format(pace.requiredPerDay)} / day)
                           </span>
                         )}
@@ -535,7 +535,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                 >
                   <ArrowDown size={14} weight="bold" />
                   <span>{t("savings.deposit")}</span>
-                  <span className="font-mono text-[10px] text-[var(--jade-ink)] opacity-75">
+                  <span className="font-mono text-xs text-[var(--jade-ink)] opacity-75">
                     (+15 XP)
                   </span>
                 </TactileButton>
@@ -631,7 +631,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                   <span className="font-mono font-bold">+{XP_PER_SAVINGS_DEPOSIT} XP</span>
                 </div>
 
-                <div className="text-[11px] text-[var(--color-ink-faint)] flex items-center gap-1.5">
+                <div className="text-xs text-[var(--color-ink-faint)] flex items-center gap-1.5">
                   <CheckCircle size={14} className="text-[var(--jade)]" weight="fill" />
                   <span>{t("savings.syncLedger")}</span>
                 </div>
@@ -689,7 +689,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                     <label className="text-xs font-semibold text-[var(--color-ink-soft)]">
                       {t("savings.amountLabel")}
                     </label>
-                    <span className="font-mono text-[11px] text-[var(--color-ink-faint)]">
+                    <span className="font-mono text-xs text-[var(--color-ink-faint)]">
                       {t("savings.maxLabel", { amount: thb.format(withdrawModalGoal.currentAmount) })}
                     </span>
                   </div>

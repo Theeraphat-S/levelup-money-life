@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white&style=flat-square" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white&style=flat-square" alt="Tailwind CSS v4" />
   <img src="https://img.shields.io/badge/SQLite-Local--First-003B57?logo=sqlite&logoColor=white&style=flat-square" alt="SQLite" />
-  <img src="https://img.shields.io/badge/Vitest-96%20Passed-brightgreen?logo=vitest&logoColor=white&style=flat-square" alt="Vitest Tests" />
+  <img src="https://img.shields.io/badge/Vitest-107%20Passed-brightgreen?logo=vitest&logoColor=white&style=flat-square" alt="Vitest Tests" />
   <img src="https://img.shields.io/badge/OCR-Tesseract.js-5C6BC0?style=flat-square" alt="Tesseract.js OCR" />
   <img src="https://img.shields.io/badge/i18n-TH%20%7C%20EN-orange?style=flat-square" alt="i18n TH/EN" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
@@ -126,6 +126,15 @@
 - **JSON Backup & Snapshot Restore**: Export and import complete snapshots including custom presets and quest history.
 - **CSV Data Export**: Export clean transaction history for Excel, Google Sheets, or tax filings.
 
+#### 13. 🚀 First-Run Onboarding Wizard (`GettingStarted`)
+- **Guided Setup**: Step-by-step guidance for new users (welcome, interactive demo preview with sample ledger data, setting initial baseline income, reviewing 50/30/20 budget allocations, and logging first transaction).
+- **Persistent Dismissal**: One-click skip or completion with automatic persistent state in local settings.
+
+#### 14. ♿ High-Agency Accessibility & Enterprise Resilience
+- **Complete Focus Trapping (`useDialogFocus`)**: Accessible modal dialog focus management, trapping keyboard navigation and restoring active elements upon close.
+- **WCAG AA Compliance**: High-contrast ratios, legible tabular numbers (`font-variant-numeric: tabular-nums`), and explicit keyboard focus rings (`outline: 2px solid var(--primary)`).
+- **Atomic Database Operations**: SQLite transaction protection utilizing SQL snapshot replacement (`INSERT OR REPLACE` with `json_each`) preventing partial writes or corrupt states.
+
 ---
 
 ## 🇹🇭 ภาษาไทย
@@ -156,6 +165,8 @@
 | 🧾 **สแกนสลิปโอนเงินอัจฉริยะ (Slip Scanner)** | ถอดข้อความจากภาพสลิปธนาคารไทย (KBank, SCB, PromptPay, BBL, KTB, TTB) ด้วย OCR ดึงยอดเงิน วันที่ และจัดหมวดหมู่อัตโนมัติ |
 | 💾 **จัดการข้อมูล & ความเป็นส่วนตัว (Data Manager)** | ข้อมูลเก็บในเครื่อง 100% ด้วย SQLite รองรับการ Backup/Restore ไฟล์ JSON, Export ตารางเป็น CSV |
 | 🎨 **ดีไซน์ระดับพรีเมียม & Bilingual** | รองรับ Dark/Light Mode, สลับภาษาไทย-อังกฤษได้ทันที, แอนิเมชันลื่นไหลด้วย Framer Motion |
+| 🚀 **ระบบแนะนำการเริ่มต้นใช้งาน (Getting Started)** | แนะนำขั้นตอนสำหรับผู้ใช้ใหม่ (Welcome, ทดลองดูข้อมูลจำลองในตาราง, กำหนดรายได้เริ่มต้น, ตรวจสอบงบประมาณ 50/30/20, และจดรายการแรก) พร้อมจดจำสถานะปิดถาวร |
+| ♿ **การเข้าถึง & ความทนทานระดับสูง (Accessibility & Resilience)** | รองรับการควบคุมด้วยคีย์บอร์ดเต็มรูปแบบ (Focus Trap บนทุก Modal Dialog), เส้นโฟกัสชัดเจนตามเกณฑ์ WCAG AA, ฟอนต์ตัวเลขจัดแนว Tabular, ป้องกันข้อมูลสูญหายด้วย SQLite Atomic Snapshot |
 
 ---
 
@@ -210,6 +221,7 @@ LevelUp-Money-Life/
 │   │   │   ├── TaxPlannerView.tsx      # Thai personal income tax planner & deductions
 │   │   │   ├── AnalyticsHub.tsx        # Charts & category spending distribution
 │   │   │   └── QuestsGrowth.tsx        # Gamified quests & achievement medals
+│   │   ├── GettingStarted.tsx       # 🚀 First-run onboarding wizard & guided checklist
 │   │   ├── QuickCommandBar.tsx      # ⚡ Fast single-line natural language input & 1-tap presets
 │   │   ├── PresetManagerModal.tsx   # ⚙️ Custom preset CRUD management dialog
 │   │   ├── UndoToast.tsx            # ↩️ 5-second countdown interactive undo notification
@@ -219,7 +231,7 @@ LevelUp-Money-Life/
 │   │   ├── LevelUpCelebration.tsx   # Level up particle & modal reward screen
 │   │   ├── QuickAddModal.tsx        # Detailed transaction entry modal
 │   │   └── SlipScanModal.tsx        # Thai bank slip OCR scanner & auto-parser
-│   ├── hooks/                       # Domain custom hooks (useTransactions, useGamification, useQuests, useTheme)
+│   ├── hooks/                       # Domain custom hooks (useTransactions, useSavingsGoals, useDialogFocus, useQuests, ...)
 │   ├── services/
 │   │   ├── db.ts                    # SQLite database service & schema migrations
 │   │   ├── exportImport.ts          # CSV and JSON backup/restore snapshot engine

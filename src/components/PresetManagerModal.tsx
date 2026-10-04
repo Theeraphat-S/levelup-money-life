@@ -190,7 +190,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
                     <button
                       type="button"
                       onClick={handleResetDefaults}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] transition"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] transition"
                     >
                       <ArrowCounterClockwise size={13} />
                       <span>{t("presetModal.resetDefaults")}</span>
@@ -227,13 +227,13 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
                             <div className="text-xs font-bold text-[var(--color-ink)] truncate">
                               {preset.name}
                             </div>
-                            <div className="flex items-center gap-1.5 text-[11px]">
+                            <div className="flex items-center gap-1.5 text-xs">
                               <span className="font-mono font-bold text-[var(--color-ink)]">
                                 ฿{preset.amount}
                               </span>
                               <span className="text-[var(--color-ink-soft)]">·</span>
                               <span
-                                className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.2 text-[10px] font-medium border border-[var(--color-line)] bg-[var(--color-surface)]"
+                                className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.2 text-xs font-medium border border-[var(--color-line)] bg-[var(--color-surface)]"
                               >
                                 <span
                                   className="h-1.5 w-1.5 rounded-full"
@@ -404,7 +404,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
                               key={cat}
                               type="button"
                               onClick={() => setCategory(cat)}
-                              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition ${
+                              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
                                 isSelected
                                   ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary-ink)] font-semibold shadow-xs"
                                   : "border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-subtle)]"
@@ -454,7 +454,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
 
             {/* Footer */}
             <div className="border-t border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-6 py-3 flex items-center justify-between">
-              <span className="text-[11px] text-[var(--color-ink-soft)] font-mono">
+              <span className="text-xs text-[var(--color-ink-soft)] font-mono">
                 {t("quickBar.shortcutHint")}
               </span>
               <button

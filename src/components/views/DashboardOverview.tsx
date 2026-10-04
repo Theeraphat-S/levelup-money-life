@@ -27,7 +27,7 @@ import {
   type ViewTab,
 } from "../../types";
 
-const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 interface DashboardOverviewProps {
   transactions: Transaction[];
@@ -38,6 +38,7 @@ interface DashboardOverviewProps {
   setActiveTab: (tab: ViewTab) => void;
   onToggleQuest: (id: string) => void;
   onOpenQuickAdd: () => void;
+  onOpenIncome?: () => void;
   savingsGoals?: SavingsGoal[];
 }
 
@@ -50,6 +51,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   setActiveTab,
   onToggleQuest,
   onOpenQuickAdd,
+  onOpenIncome,
   savingsGoals,
 }) => {
   const { t } = useTranslation();
@@ -58,31 +60,28 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   // Filter transactions for the selected month
   const monthTransactions = transactions.filter((tx) => tx.date.startsWith(activeMonth));
   const monthIncome = monthTransactions
-    .filter((tx) => tx.amount > 0)
+    .filter((tx) => tx.amount > 0 && tx.category === "Income")
     .reduce((sum, tx) => sum + tx.amount, 0);
   const monthExpenses = Math.abs(
     monthTransactions
-      .filter((tx) => tx.amount < 0)
+      .filter((tx) => tx.amount < 0 && tx.category !== "Savings")
       .reduce((sum, tx) => sum + tx.amount, 0)
   );
   const netCashFlow = monthIncome - monthExpenses;
-  const clearedCount = monthTransactions.filter((tx) => tx.cleared).length;
   const totalCount = monthTransactions.length;
 
-  const savingsRate =
-    monthIncome > 0
-      ? Math.max(0, Math.round(((monthIncome - monthExpenses) / monthIncome) * 100))
-      : 0;
+  const netSaved = monthTransactions.filter(tx => tx.category === "Savings").reduce((sum, tx) => sum - tx.amount, 0);
+  const savingsRate = monthIncome > 0 ? Math.round(netSaved / monthIncome * 100) : 0;
 
   // Compute actual spent per bucket
   const bucketActuals: Record<"Needs" | "Wants" | "Savings", number> = {
     Needs: 0,
     Wants: 0,
-    Savings: 0,
+    Savings: netSaved,
   };
 
   monthTransactions
-    .filter((tx) => tx.amount < 0)
+    .filter((tx) => tx.amount < 0 && tx.category !== "Savings")
     .forEach((tx) => {
       if (tx.category !== "Income") {
         const bucket = CATEGORY_BUCKET_MAP[tx.category] || "Wants";
@@ -111,6 +110,19 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("ux.moneySummary", { month: activeMonth })}</h1>
+        <p className="mt-1 max-w-3xl text-sm text-[var(--color-ink-soft)]">{t("ux.actualExplanation")}</p>
+      </div>
+      <section className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-4" aria-label={t("ux.reviewSpending")}>
+        {monthIncome === 0 ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm">{t("ux.noIncome")}</p><button type="button" onClick={onOpenIncome || onOpenQuickAdd} className="rounded-lg bg-[#1C5954] text-[#FEFFFC] dark:bg-[#76AA9D] dark:text-[#071B1A] px-3 py-2 text-sm font-semibold transition active:scale-[0.98] shadow-xs cursor-pointer">{t("ux.addIncome")}</button></div> : (() => {
+          const exceeded = allocations.filter(allocation => {
+            const bucket = allocation.label as keyof typeof bucketActuals;
+            return bucket !== "Savings" && bucketActuals[bucket] > income * allocation.percent / 100;
+          });
+          return exceeded.length ? <div className="space-y-2">{exceeded.map(allocation => <div key={allocation.id} className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-[var(--rose-ink)]">{t("ux.overBudget", { bucket: t(`alloc.${allocation.label}`), amount: thb.format(bucketActuals[allocation.label as keyof typeof bucketActuals] - income * allocation.percent / 100) })}</p><button type="button" onClick={() => setActiveTab("ledger")} className="text-sm font-semibold underline transition active:scale-[0.98] cursor-pointer">{t("ux.reviewSpending")}</button></div>)}</div> : <p className="text-sm">{t("ux.allClear")}</p>;
+        })()}
+      </section>
       <FloatingReward
         rewards={floatingRewards}
         onComplete={(id) => {
@@ -126,7 +138,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           numericValue={netCashFlow}
           prefix="฿"
           showSign={true}
-          subtext={netCashFlow >= 0 ? "Positive cash flow" : "Net deficit"}
+          subtext={t("ux.flowExplanation")}
           tone={netCashFlow >= 0 ? "jade" : "rose"}
         />
         <MetricTile
@@ -134,7 +146,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           label={t("metric.income")}
           numericValue={monthIncome}
           prefix="฿"
-          subtext={`Budget baseline: ฿${thb.format(income)}`}
+          subtext={t("ux.expectedIncome", { amount: thb.format(income) })}
           tone="jade"
         />
         <MetricTile
@@ -142,15 +154,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           label={t("metric.spent")}
           numericValue={monthExpenses}
           prefix="฿"
-          subtext={`${totalCount} total entries logged`}
+          subtext={t("ux.entryCount", { count: totalCount })}
           tone="rose"
         />
         <MetricTile
           icon={<PiggyBank size={18} weight="duotone" />}
           label={t("metric.savingsRate")}
-          numericValue={savingsRate}
+          numericValue={monthIncome > 0 ? savingsRate : undefined}
+          value={monthIncome > 0 ? undefined : "—"}
           suffix="%"
-          subtext={`Cleared logs: ${clearedCount}/${totalCount}`}
+          subtext={t("ux.savedExplanation", { amount: thb.format(netSaved) })}
           tone={savingsRate >= 20 ? "jade" : "amber"}
         />
       </div>
@@ -185,7 +198,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               const percent = alloc ? alloc.percent : bucketKey === "Needs" ? 50 : bucketKey === "Wants" ? 30 : 20;
               const plannedBudget = Math.round((income * percent) / 100);
               const actual = bucketActuals[bucketKey];
-              const consumedPct = plannedBudget > 0 ? Math.min(100, Math.round((actual / plannedBudget) * 100)) : 0;
+              const consumedPct = plannedBudget > 0 ? Math.max(0, Math.min(100, Math.round((actual / plannedBudget) * 100))) : 0;
               const isOver = actual > plannedBudget && plannedBudget > 0;
 
               return (
@@ -217,8 +230,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     />
                   </div>
 
-                  <div className="mt-1.5 flex items-center justify-between text-[10px] text-[var(--color-ink-soft)]">
-                    <span>{consumedPct}% used</span>
+                  <div className="mt-1.5 flex items-center justify-between text-xs text-[var(--color-ink-soft)]">
+                    <span>{t("ux.budgetUsed", { amount: consumedPct })}</span>
                     <span className={isOver ? "font-bold text-[var(--rose-ink)]" : ""}>
                       {isOver
                         ? t("plan.overBudget", { amount: thb.format(actual - plannedBudget) })
@@ -273,7 +286,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     >
                       {quest.title}
                     </div>
-                    <div className="font-mono text-[10px] text-[var(--color-ink-soft)]">
+                    <div className="font-mono text-xs text-[var(--color-ink-soft)]">
                       {quest.date}
                     </div>
                   </div>
@@ -339,6 +352,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               return (
                 <div
                   key={goal.id}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setActiveTab("savings"); } }}
                   onClick={() => setActiveTab("savings")}
                   className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)]/60 p-3 hover:bg-[var(--color-surface-subtle)] cursor-pointer transition"
                 >
@@ -352,7 +368,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[10px] font-mono text-[var(--color-ink-soft)]">
+                  <div className="mt-1.5 flex items-center justify-between text-xs font-mono text-[var(--color-ink-soft)]">
                     <span>฿{thb.format(goal.currentAmount)}</span>
                     <span>฿{thb.format(goal.targetAmount)}</span>
                   </div>
@@ -390,9 +406,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         }
       >
         <div className="overflow-x-auto">
-          <table className="min-w-full border-separate border-spacing-0 text-xs">
+          <table className="min-w-full border-separate border-spacing-0 text-sm">
             <thead>
-              <tr className="text-left text-[10px] font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
+              <tr className="text-left text-xs font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
                 <th className="py-2.5 px-3">{t("expense.name")}</th>
                 <th className="py-2.5 px-3">{t("expense.category")}</th>
                 <th className="py-2.5 px-3">{t("expense.date")}</th>
@@ -410,14 +426,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <div className="flex items-center gap-2">
                         <span>{row.name}</span>
                         {row.notes && (
-                          <span className="rounded-sm bg-[var(--color-surface-subtle)] px-1 py-0.2 text-[9px] text-[var(--color-ink-soft)] font-normal border border-[var(--color-line)]">
+                          <span className="rounded-sm bg-[var(--color-surface-subtle)] px-1 py-0.2 text-xs text-[var(--color-ink-soft)] font-normal border border-[var(--color-line)]">
                             {row.notes}
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="py-2.5 px-3 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-medium border border-[var(--color-line)] bg-[var(--color-surface)] text-[11px]">
+                      <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-medium border border-[var(--color-line)] bg-[var(--color-surface)] text-xs">
                         <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: catColor }} />
                         {t(`category.${row.category}`)}
                       </span>
@@ -432,12 +448,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     </td>
                     <td className="py-2.5 px-3 text-center whitespace-nowrap">
                       {row.cleared ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--jade-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--jade-ink)] border border-[var(--jade)]/30">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--jade-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--jade-ink)] border border-[var(--jade)]/30">
                           <ShieldCheck size={12} weight="fill" />
                           {t("expense.cleared")}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--amber-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--amber-ink)] border border-[var(--amber)]/30">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--amber-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--amber-ink)] border border-[var(--amber)]/30">
                           {t("expense.pending")}
                         </span>
                       )}

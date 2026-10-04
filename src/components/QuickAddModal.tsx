@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useDialogFocus } from "../hooks/useDialogFocus";
+import { getLocalTodayISO } from "../utils/safeToSpend";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check,
@@ -19,9 +21,10 @@ import { CustomDatePicker } from "./common/CustomDatePicker";
 interface QuickAddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (tx: Transaction) => void;
+  onSave: (tx: Transaction) => void | Promise<void>;
   onOpenScanSlip?: () => void;
   defaultDate?: string;
+  defaultType?: "expense" | "income";
 }
 
 export const QuickAddModal: React.FC<QuickAddModalProps> = ({
@@ -30,9 +33,16 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   onSave,
   onOpenScanSlip,
   defaultDate,
+  defaultType = "expense",
 }) => {
   const { t } = useTranslation();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalTodayISO();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const pendingTx = useRef<Transaction | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const discardAction = useRef<() => void>(() => {});
+  useDialogFocus(isOpen, dialogRef);
 
   const [type, setType] = useState<"expense" | "income">("expense");
   const [name, setName] = useState("");
@@ -48,33 +58,44 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       setName("");
       setAmountStr("");
       setDate(defaultDate || today);
-      setCategory(type === "income" ? "Income" : "Food");
+      setType(defaultType);
+      setCategory(defaultType === "income" ? "Income" : "Food");
       setCleared(true);
       setNotes("");
       setError("");
+      pendingTx.current = null;
+      setConfirmDiscard(false);
     }
-  }, [isOpen, defaultDate, type, today]);
+  }, [isOpen, defaultDate, defaultType, today]);
+
+  const requestClose = () => {
+    if (saving) return;
+    discardAction.current = onClose;
+    if (name || amountStr || notes) setConfirmDiscard(true);
+    else onClose();
+  };
 
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
-        onClose();
+        requestClose();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, name, amountStr, notes, saving]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     const rawAmount = parseFloat(amountStr);
     if (!name.trim()) {
-      setError("Please provide a description");
+      setError(t("ux.descriptionRequired"));
       return;
     }
-    if (isNaN(rawAmount) || rawAmount <= 0) {
-      setError("Please enter a valid positive amount");
+    if (!Number.isFinite(rawAmount) || rawAmount <= 0) {
+      setError(t("ux.amountRequired"));
       return;
     }
 
@@ -82,7 +103,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     const finalCategory: TransactionCategory = type === "income" ? "Income" : category;
 
     const newTx: Transaction = {
-      id: crypto.randomUUID(),
+      id: pendingTx.current?.id || crypto.randomUUID(),
       name: name.trim(),
       amount: finalAmount,
       date,
@@ -91,8 +112,17 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       notes: notes.trim(),
     };
 
-    onSave(newTx);
-    onClose();
+    pendingTx.current = newTx;
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(newTx);
+      onClose();
+    } catch {
+      setError(t("ux.saveFailed"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -104,17 +134,22 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={requestClose}
             className="fixed inset-0 bg-black/40 backdrop-blur-xs"
           />
 
           {/* Modal Content */}
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quick-add-title"
+            tabIndex={-1}
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
             transition={{ type: "spring", stiffness: 350, damping: 28 }}
-            className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-2xl z-10"
+            className="relative w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-2xl z-10"
           >
             {/* 1px Inner Liquid Glass Highlight */}
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/40 dark:bg-white/10" />
@@ -122,7 +157,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-6 py-4">
               <div>
-                <h2 className="text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+                <h2 id="quick-add-title" className="text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
                   {t("quickAdd.title")}
                 </h2>
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
@@ -131,21 +166,27 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               </div>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={requestClose}
+                aria-label={t("ux.close")}
+                disabled={saving}
                 className="rounded-lg p-1.5 text-[var(--color-ink-soft)] hover:bg-[var(--color-line-subtle)] hover:text-[var(--color-ink)]"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4" aria-busy={saving}>
+              <fieldset disabled={saving} className="space-y-4">
               {/* Slip Scan Shortcut Trigger */}
               {onOpenScanSlip && (
                 <button
                   type="button"
                   onClick={() => {
-                    onClose();
-                    onOpenScanSlip();
+                    const openScanner = () => { onClose(); onOpenScanSlip(); };
+                    if (name || amountStr || notes) {
+                      discardAction.current = openScanner;
+                      setConfirmDiscard(true);
+                    } else openScanner();
                   }}
                   className="w-full flex items-center justify-between rounded-xl border border-dashed border-[var(--primary)]/40 bg-[var(--primary-soft)] hover:opacity-95 px-3.5 py-2 text-xs text-[var(--primary-ink)] transition group cursor-pointer"
                 >
@@ -153,9 +194,9 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                     <Receipt size={16} weight="duotone" className="text-[var(--primary)] group-hover:scale-110 transition" />
                     <span>{t("quickAdd.scanSlipTab")}</span>
                   </span>
-                  <span className="flex items-center gap-1 text-[11px] font-semibold text-[var(--jade-ink)]">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-[var(--jade-ink)]">
                     <Sparkle size={12} weight="fill" className="text-[var(--jade)]" />
-                    <span>Auto-fill from image</span>
+                    <span>{t("ux.fillFromImage")}</span>
                   </span>
                 </button>
               )}
@@ -164,6 +205,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               <div className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] p-1">
                 <button
                   type="button"
+                  aria-pressed={type === "expense"}
                   onClick={() => {
                     setType("expense");
                     if (category === "Income") setCategory("Food");
@@ -187,6 +229,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                     setType("income");
                     setCategory("Income");
                   }}
+                  aria-pressed={type === "income"}
                   className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold transition group ${
                     type === "income"
                       ? "bg-[var(--jade-soft)] text-[var(--jade-ink)] border border-[var(--jade)]/30 shadow-xs"
@@ -205,7 +248,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               {/* Amount & Date Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
+                  <label htmlFor="quick-amount" className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
                     {t("quickAdd.amountLabel")}
                   </label>
                   <div
@@ -225,6 +268,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                       ฿
                     </span>
                     <input
+                      id="quick-amount"
                       type="number"
                       step="any"
                       min="0"
@@ -257,10 +301,11 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
+                <label htmlFor="quick-name" className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
                   {t("quickAdd.nameLabel")}
                 </label>
                 <input
+                  id="quick-name"
                   type="text"
                   required
                   placeholder={t("quickAdd.namePlaceholder")}
@@ -284,6 +329,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                         <button
                           key={cat}
                           type="button"
+                          aria-pressed={isSelected}
                           onClick={() => setCategory(cat)}
                           className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
                             isSelected
@@ -305,10 +351,11 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
+                <label htmlFor="quick-notes" className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
                   {t("quickAdd.notesLabel")}
                 </label>
                 <input
+                  id="quick-notes"
                   type="text"
                   placeholder={t("quickAdd.notesPlaceholder")}
                   value={notes}
@@ -335,7 +382,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               </div>
 
               {error && (
-                <div className="rounded-xl border border-[var(--rose)]/30 bg-[var(--rose-soft)] px-3 py-2 text-xs font-medium text-[var(--rose-ink)]">
+                <div role="alert" className="rounded-xl border border-[var(--rose)]/30 bg-[var(--rose-soft)] px-3 py-2 text-xs font-medium text-[var(--rose-ink)]">
                   {error}
                 </div>
               )}
@@ -344,7 +391,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[var(--color-line)]">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={requestClose}
                   className="rounded-xl px-4 py-2 text-xs font-semibold text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)] transition"
                 >
                   {t("quickAdd.cancel")}
@@ -354,9 +401,17 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                   className="inline-flex items-center gap-1.5 rounded-xl bg-[#1C5954] text-[#FEFFFC] dark:bg-[#76AA9D] dark:text-[#071B1A] px-4 py-2 text-xs font-semibold shadow-xs transition hover:opacity-90 active:scale-[0.98]"
                 >
                   <Sparkle size={15} weight="fill" />
-                  <span>{t("quickAdd.submit", { xp: 15 })}</span>
+                  <span>{t(saving ? "ux.saving" : "ux.saveTransaction")}</span>
                 </button>
               </div>
+              </fieldset>
+              {confirmDiscard && <div role="alert" className="rounded-xl border border-[var(--amber)] bg-[var(--amber-soft)] p-3 text-xs">
+                <p className="font-semibold text-[var(--color-ink)]">{t("ux.discardQuestion")}</p>
+                <div className="mt-2 flex gap-3">
+                  <button type="button" onClick={() => setConfirmDiscard(false)} className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface-subtle)] active:scale-[0.98] cursor-pointer">{t("ux.keepEditing")}</button>
+                  <button type="button" onClick={() => discardAction.current()} className="rounded-lg bg-[var(--rose-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--rose-ink)] transition hover:opacity-90 active:scale-[0.98] cursor-pointer">{t("ux.discard")}</button>
+                </div>
+              </div>}
             </form>
           </motion.div>
         </div>

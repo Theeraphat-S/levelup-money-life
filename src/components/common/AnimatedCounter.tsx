@@ -12,7 +12,7 @@ interface AnimatedCounterProps {
 }
 
 const defaultNumberFormatter = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 0,
+  maximumFractionDigits: 2,
 });
 
 export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
@@ -55,7 +55,7 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
           duration,
           ease: [0.16, 1, 0.3, 1],
           onUpdate: (latest) => {
-            setDisplayValue(Math.round(latest));
+            setDisplayValue(Math.round(latest * 100) / 100);
           },
         });
 

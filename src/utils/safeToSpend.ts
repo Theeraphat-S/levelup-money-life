@@ -26,7 +26,7 @@ export function getDaysInMonth(year: number, month: number): number {
  * - Month Outflow = Sum of all expenses logged in the active month
  * - Month Remaining Spendable = Spendable Monthly Budget - Month Outflow
  * - Days Remaining = Days left in the month including today
- * - Daily Safe-to-Spend = Month Remaining Spendable / Days Remaining (clamped >= 0)
+ * - Daily allowance = (Month Remaining + Today Spent) / Days Remaining (clamped >= 0)
  * - Today Remaining = Daily Safe-to-Spend - Today's Logged Expenses
  */
 export function calculateDailySafeToSpend(
@@ -67,12 +67,12 @@ export function calculateDailySafeToSpend(
   const savingsPercent = savingsAlloc ? Math.min(100, Math.max(0, savingsAlloc.percent)) : 20;
   const spendablePercent = Math.max(0, 100 - savingsPercent);
 
-  // Use actual logged income in the active month if higher than baseline, else expectedIncome
+  // This is a forecast from the plan, not available cash. With no plan, use recorded income.
   const monthIncomeLogs = transactions
-    .filter((tx) => tx.date.startsWith(activeMonth) && tx.amount > 0)
+    .filter((tx) => tx.date.startsWith(activeMonth) && tx.amount > 0 && tx.category === "Income")
     .reduce((sum, tx) => sum + tx.amount, 0);
 
-  const baselineIncome = Math.max(0, expectedIncome, monthIncomeLogs);
+  const baselineIncome = Math.max(0, expectedIncome > 0 ? expectedIncome : monthIncomeLogs);
   const monthSpendableBudget = Math.round((baselineIncome * spendablePercent) / 100);
 
   // Month total expenses for spendable living budget (Needs + Wants)
@@ -93,7 +93,7 @@ export function calculateDailySafeToSpend(
     transactions
       .filter(
         (tx) =>
-          tx.date === todayStr &&
+          activeMonth === currentMonthISO && tx.date === todayStr &&
           tx.amount < 0 &&
           tx.category !== "Income" &&
           tx.category !== "Savings"
@@ -104,7 +104,7 @@ export function calculateDailySafeToSpend(
   const monthRemaining = monthSpendableBudget - monthSpent;
   const dailySafeToSpend =
     monthRemaining > 0
-      ? Math.round(monthRemaining / Math.max(1, daysRemainingInMonth))
+      ? Math.round((monthRemaining + todaySpent) / Math.max(1, daysRemainingInMonth))
       : 0;
 
   const todayRemaining = dailySafeToSpend - todaySpent;

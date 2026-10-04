@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig, useReducedMotion, type HTMLMotionProps } from "framer-motion";
 import { CalendarDots, Sparkle } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 
 // Components & Modals
 import { HeaderCommandDeck } from "./components/HeaderCommandDeck";
 import { QuickCommandBar } from "./components/QuickCommandBar";
+import { GettingStarted } from "./components/GettingStarted";
 import { UndoToast } from "./components/UndoToast";
 import { QuickAddModal } from "./components/QuickAddModal";
 import { SlipScanModal } from "./components/SlipScanModal";
@@ -61,13 +62,16 @@ const { today, currentMonthISO } = getInitialDates();
 
 export default function App() {
   const { t } = useTranslation();
+  const shouldReduceMotion = useReducedMotion();
   const { themeMode, setThemeMode } = useTheme();
   const [loading, setLoading] = useState(true);
+  const [showSetup, setShowSetup] = useState(false);
 
   // Navigation & Modals
   const [activeMonth, setActiveMonth] = useState<string>(currentMonthISO);
   const [activeTab, setActiveTab] = useState<ViewTab>("dashboard");
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
+  const [quickAddType, setQuickAddType] = useState<"expense" | "income">("expense");
   const [isDataManagerOpen, setIsDataManagerOpen] = useState<boolean>(false);
 
   // Domain Hooks
@@ -97,6 +101,8 @@ export default function App() {
 
   const {
     transactions,
+    saveStatus,
+    retrySave,
     setTransactions,
     setTransactionsState,
     presets,
@@ -194,10 +200,6 @@ export default function App() {
     async function loadData() {
       try {
         let txs = await getTransactions();
-        if (txs.length === 0) {
-          txs = SAMPLE_TRANSACTIONS;
-          await saveAllTransactions(txs);
-        }
 
         let allocs = await getAllocations();
         if (allocs.length === 0) {
@@ -207,19 +209,19 @@ export default function App() {
 
         let qsts = await getQuests();
         if (qsts.length === 0) {
-          qsts = SAMPLE_QUESTS;
+          qsts = SAMPLE_QUESTS.map(quest => ({ ...quest, done: false }));
           await saveAllQuests(qsts);
         }
 
-        const inc = await getSetting<number>("income", 48000);
+        const inc = await getSetting<number>("income", 0);
         const savedTax = await getSavedTaxProfile();
-        const savedXp = await getSetting<number>("totalXp", 180);
+        const savedXp = await getSetting<number>("totalXp", 0);
         const savedStreak = await getSetting<number>("streakDays", 1);
         const savedLastDate = await getSetting<string>("lastActiveDate", today);
-        const savedAchievements = await getSetting<string[]>("unlockedAchievements", [
-          "first_log",
-        ]);
+        const savedAchievements = await getSetting<string[]>("unlockedAchievements", []);
         const savedPresets = await getStoredPresets();
+        const setupComplete = await getSetting<boolean>("setupComplete", false);
+        setShowSetup(!setupComplete && txs.length === 0);
 
         initTransactions(txs, savedPresets);
         initAllocations(allocs, inc);
@@ -237,41 +239,47 @@ export default function App() {
 
   // Handle Quick Command Bar / Preset Transaction Logging
   const handleLogQuickTransaction = (newTx: Transaction) => {
-    logQuickTransaction(newTx, {
+    return logQuickTransaction(newTx, {
       onAwardXp: addXp,
       onAfterLogged: (tx) => {
         autoCompleteLoggingQuest(addXp);
         checkAchievements([tx, ...transactions], quests, allocations, savingsGoals);
+        setShowSetup(false);
+        void saveSetting("setupComplete", true);
       },
     });
   };
 
   // Handle Undo Transaction Revert
   const handleUndoTransaction = (tx: Transaction) => {
-    undoTransaction(tx, {
+    void undoTransaction(tx, {
       onDeductXp: (amount) => setTotalXp((prev) => Math.max(0, prev - amount)),
       onToast: showToast,
       undoNoticeMessage: t("quickBar.toastUndone", { name: tx.name }),
-    });
+    }).catch(() => {});
   };
 
   // Handle Quick Add Save
   const handleSaveQuickTransaction = (newTx: Transaction) => {
-    saveQuickTransaction(newTx, {
+    return saveQuickTransaction(newTx, {
       onAwardXp: addXp,
       onAfterLogged: (tx) => {
         checkAchievements([tx, ...transactions], quests, allocations, savingsGoals);
+        setShowSetup(false);
+        void saveSetting("setupComplete", true);
       },
     });
   };
 
   // Handle Slip Scan Save
   const handleSaveSlipTransaction = (newTx: Transaction, xpBonus = 25) => {
-    saveSlipTransaction(newTx, xpBonus, {
+    return saveSlipTransaction(newTx, xpBonus, {
       onAwardXp: addXp,
       onAfterLogged: (tx) => {
         autoCompleteLoggingQuest(addXp);
         checkAchievements([tx, ...transactions], quests, allocations, savingsGoals);
+        setShowSetup(false);
+        void saveSetting("setupComplete", true);
       },
       onToast: (msg) => showToast(msg, 4000),
       toastMessage: t("slipScanner.toastSuccess", { xp: xpBonus }),
@@ -298,11 +306,13 @@ export default function App() {
       monthSummary = ` · (${monthKeys.map((m) => `${m}: ${monthCounts[m]}`).join(", ")})`;
     }
 
-    saveBatchSlipTransactions(newTxs, totalXpBonus, {
+    return saveBatchSlipTransactions(newTxs, totalXpBonus, {
       onAwardXp: addXp,
       onAfterLoggedBatch: (txs) => {
         autoCompleteLoggingQuest(addXp);
         checkAchievements([...txs, ...transactions], quests, allocations, savingsGoals);
+        setShowSetup(false);
+        void saveSetting("setupComplete", true);
       },
       onToast: (msg) => showToast(msg, 5500),
       toastMessage: `${t("slipScanner.batchToastSuccess", { count: newTxs.length, xp: totalXpBonus })}${monthSummary}`,
@@ -356,7 +366,15 @@ export default function App() {
     );
   }
 
+  const viewMotionProps: HTMLMotionProps<"div"> = {
+    initial: shouldReduceMotion ? false : { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -8 },
+    transition: { duration: shouldReduceMotion ? 0 : 0.35, ease: [0.16, 1, 0.3, 1] },
+  };
+
   return (
+    <MotionConfig reducedMotion="user">
     <main className="min-h-[100dvh] px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1400px]">
         {/* Top Header Command Deck */}
@@ -366,15 +384,27 @@ export default function App() {
           setActiveMonth={setActiveMonth}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          onOpenQuickAdd={() => setIsQuickAddOpen(true)}
+          onOpenQuickAdd={() => { setQuickAddType("expense"); setIsQuickAddOpen(true); }}
           onOpenScanSlip={() => openSlipScan([])}
           onOpenDataManager={() => setIsDataManagerOpen(true)}
           themeMode={themeMode}
           setThemeMode={setThemeMode}
         />
 
+        {showSetup && <GettingStarted
+          income={income}
+          onIncome={setIncome}
+          onBudget={() => setActiveTab("budget")}
+          onFirstTransaction={() => { setQuickAddType("expense"); setIsQuickAddOpen(true); }}
+          onDismiss={() => { setShowSetup(false); void saveSetting("setupComplete", true); }}
+        />}
+        {saveStatus !== "idle" && <div role={saveStatus === "failed" ? "alert" : "status"} className={`mb-4 rounded-xl border px-4 py-3 text-sm ${saveStatus === "failed" ? "border-[var(--rose)] text-[var(--rose-ink)]" : "border-[var(--color-line)] text-[var(--color-ink-soft)]"}`}>
+          {t(saveStatus === "failed" ? "ux.saveFailed" : saveStatus === "saving" ? "ux.saving" : "ux.saved")}
+          {saveStatus === "failed" && <button type="button" onClick={() => { void retrySave().catch(() => {}); }} className="ml-3 underline font-semibold transition active:scale-[0.98] cursor-pointer">{t("ux.retry")}</button>}
+        </div>}
+
         {/* Quick Command Bar & One-Tap Presets System */}
-        <QuickCommandBar
+        {(activeTab === "dashboard" || activeTab === "ledger") && <QuickCommandBar
           transactions={transactions}
           allocations={allocations}
           income={income}
@@ -382,18 +412,13 @@ export default function App() {
           presets={presets}
           setPresets={setPresets}
           onLogTransaction={handleLogQuickTransaction}
-        />
+          onConfigureBudget={() => setActiveTab("budget")}
+        />}
 
         {/* Dynamic View Transitions */}
         <AnimatePresence mode="wait">
           {activeTab === "dashboard" && (
-            <motion.div
-              key="dashboard"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <motion.div key="dashboard" {...viewMotionProps}>
               <DashboardOverview
                 transactions={transactions}
                 allocations={allocations}
@@ -402,20 +427,15 @@ export default function App() {
                 activeMonth={activeMonth}
                 setActiveTab={setActiveTab}
                 onToggleQuest={(id) => toggleQuest(id, addXp)}
-                onOpenQuickAdd={() => setIsQuickAddOpen(true)}
+                onOpenQuickAdd={() => { setQuickAddType("expense"); setIsQuickAddOpen(true); }}
+                onOpenIncome={() => { setQuickAddType("income"); setIsQuickAddOpen(true); }}
                 savingsGoals={savingsGoals}
               />
             </motion.div>
           )}
 
           {activeTab === "ledger" && (
-            <motion.div
-              key="ledger"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <motion.div key="ledger" {...viewMotionProps}>
               <TransactionLedger
                 transactions={transactions}
                 setTransactions={setTransactions}
@@ -426,13 +446,7 @@ export default function App() {
           )}
 
           {activeTab === "budget" && (
-            <motion.div
-              key="budget"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <motion.div key="budget" {...viewMotionProps}>
               <BudgetPlanner
                 income={income}
                 setIncome={setIncome}
@@ -445,13 +459,7 @@ export default function App() {
           )}
 
           {activeTab === "savings" && (
-            <motion.div
-              key="savings"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <motion.div key="savings" {...viewMotionProps}>
               <SavingsGoalsView
                 goals={savingsGoals}
                 isLoading={isSavingsLoading}
@@ -472,13 +480,7 @@ export default function App() {
           )}
 
           {activeTab === "tax" && (
-            <motion.div
-              key="tax"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <motion.div key="tax" {...viewMotionProps}>
               <TaxPlannerView
                 taxProfile={taxProfile}
                 setTaxProfile={setTaxProfile}
@@ -489,13 +491,7 @@ export default function App() {
           )}
 
           {activeTab === "analytics" && (
-            <motion.div
-              key="analytics"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <motion.div key="analytics" {...viewMotionProps}>
               <AnalyticsHub
                 transactions={transactions}
                 activeMonth={activeMonth}
@@ -504,13 +500,7 @@ export default function App() {
           )}
 
           {activeTab === "quests" && (
-            <motion.div
-              key="quests"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <motion.div key="quests" {...viewMotionProps}>
               <QuestsGrowth
                 quests={quests}
                 setQuests={setQuests}
@@ -537,6 +527,7 @@ export default function App() {
           onSave={handleSaveQuickTransaction}
           onOpenScanSlip={() => openSlipScan([])}
           defaultDate={today}
+          defaultType={quickAddType}
         />
 
         <SlipScanModal
@@ -562,7 +553,7 @@ export default function App() {
           presets={presets}
           savingsGoals={savingsGoals}
           onRestoreBackup={handleRestoreBackup}
-          onImportTransactions={(txs) => importTransactions(txs, { onAwardXp: addXp })}
+          onImportTransactions={(txs) => { void importTransactions(txs, { onAwardXp: addXp }).catch(() => {}); }}
           onResetData={handleResetData}
         />
 
@@ -580,6 +571,7 @@ export default function App() {
           onUndo={handleUndoTransaction}
           onDismiss={() => setLastLoggedTx(null)}
           durationMs={5000}
+          onView={(tx) => { setActiveMonth(tx.date.slice(0, 7)); setActiveTab("ledger"); setLastLoggedTx(null); }}
         />
 
         {/* Global Toast Notification */}
@@ -603,5 +595,6 @@ export default function App() {
         </AnimatePresence>
       </div>
     </main>
+    </MotionConfig>
   );
 }

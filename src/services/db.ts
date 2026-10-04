@@ -151,18 +151,21 @@ export async function deleteTransaction(id: string): Promise<void> {
 }
 
 export async function saveAllTransactions(txs: Transaction[]): Promise<void> {
-  localStorage.setItem("levelup.transactions", JSON.stringify(txs));
-  try {
-    const db = await getDb();
-    if (db) {
-      await db.execute("DELETE FROM transactions");
-      for (const tx of txs) {
-        await saveTransaction(tx);
-      }
-    }
-  } catch (err) {
-    console.error("Failed to batch save transactions to db:", err);
+  const db = await getDb();
+  if (!db) {
+    localStorage.setItem("levelup.transactions", JSON.stringify(txs));
+    return;
   }
+  if (txs.some(tx => !Number.isFinite(tx.amount))) throw new Error("Invalid transaction amount");
+  const payload = JSON.stringify(txs);
+  // Insert the complete snapshot before removing old rows. Each SQL statement
+  // is atomic; failure leaves existing rows intact and can safely be retried.
+  await db.execute(`INSERT OR REPLACE INTO transactions (id, name, amount, date, category, cleared, notes)
+    SELECT json_extract(value, '$.id'), json_extract(value, '$.name'),
+      json_extract(value, '$.amount'), json_extract(value, '$.date'),
+      json_extract(value, '$.category'), json_extract(value, '$.cleared'),
+      COALESCE(json_extract(value, '$.notes'), '') FROM json_each($1)`, [payload]);
+  await db.execute("DELETE FROM transactions WHERE id NOT IN (SELECT json_extract(value, '$.id') FROM json_each($1))", [payload]);
 }
 
 // --- Allocations CRUD ---

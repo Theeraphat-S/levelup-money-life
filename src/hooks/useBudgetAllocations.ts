@@ -4,7 +4,7 @@ import type { Allocation } from "../types";
 
 export function useBudgetAllocations() {
   const [allocations, setAllocationsState] = useState<Allocation[]>([]);
-  const [income, setIncomeState] = useState<number>(48000);
+  const [income, setIncomeState] = useState<number>(0);
 
   const setAllocations = useCallback(
     (value: Allocation[] | ((prev: Allocation[]) => Allocation[])) => {

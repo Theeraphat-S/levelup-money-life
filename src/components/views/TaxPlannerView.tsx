@@ -20,7 +20,7 @@ import { MetricTile } from "../common/MetricTile";
 import { calculateThaiTax, getDefaultTaxProfile } from "../../services/taxCalculator";
 import type { TaxProfile } from "../../types";
 
-const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 interface TaxPlannerViewProps {
   taxProfile: TaxProfile;
@@ -197,11 +197,11 @@ export const TaxPlannerView: React.FC<TaxPlannerViewProps> = ({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
                   {t("tax.brackets.tier", { index: brk.bracketIndex })}
                 </span>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                     brk.rate === 0
                       ? "bg-[var(--jade-soft)] text-[var(--jade-ink)]"
                       : brk.isCurrentMarginal
@@ -219,7 +219,7 @@ export const TaxPlannerView: React.FC<TaxPlannerViewProps> = ({
                   : `฿${thb.format(brk.minIncome)} – ฿${thb.format(brk.maxIncome)}`}
               </div>
 
-              <div className="mt-2 flex items-center justify-between border-t border-[var(--color-line)] pt-2 text-[11px] font-mono">
+              <div className="mt-2 flex items-center justify-between border-t border-[var(--color-line)] pt-2 text-xs font-mono">
                 <span className="text-[var(--color-ink-soft)]">
                   {t("tax.brackets.portion", { amount: thb.format(brk.taxableInBracket) })}
                 </span>
@@ -229,7 +229,7 @@ export const TaxPlannerView: React.FC<TaxPlannerViewProps> = ({
               </div>
 
               {brk.isCurrentMarginal && (
-                <div className="mt-2 flex items-center justify-center gap-1 text-[10px] font-bold text-[var(--primary-ink)]">
+                <div className="mt-2 flex items-center justify-center gap-1 text-xs font-bold text-[var(--primary-ink)]">
                   <Star size={12} weight="fill" />
                   <span>{t("tax.brackets.activeMarginal")}</span>
                 </div>
@@ -365,7 +365,7 @@ export const TaxPlannerView: React.FC<TaxPlannerViewProps> = ({
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-full bg-[var(--jade-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--jade-ink)]">
+                    <span className="rounded-full bg-[var(--jade-soft)] px-2 py-0.5 text-xs font-bold text-[var(--jade-ink)]">
                       {t("tax.advisor.roiBadge", { roi: adv.roiPercent })}
                     </span>
                     <span className="font-mono text-xs font-bold text-[var(--jade-ink)]">
@@ -376,7 +376,7 @@ export const TaxPlannerView: React.FC<TaxPlannerViewProps> = ({
                   <h4 className="mt-2.5 text-xs font-bold text-[var(--color-ink)]">
                     {t(adv.titleKey)}
                   </h4>
-                  <p className="mt-1 text-[11px] text-[var(--color-ink-soft)] leading-relaxed">
+                  <p className="mt-1 text-xs text-[var(--color-ink-soft)] leading-relaxed">
                     {t(adv.descKey, {
                       amount: thb.format(adv.recommendedAmount),
                       savings: thb.format(adv.estimatedTaxSavings),

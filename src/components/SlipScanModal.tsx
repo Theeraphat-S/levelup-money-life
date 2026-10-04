@@ -53,8 +53,8 @@ export interface SlipQueueItem {
 interface SlipScanModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (tx: Transaction, xpBonus: number) => void;
-  onSaveBatch?: (txs: Transaction[], totalXpBonus: number) => void;
+  onSave: (tx: Transaction, xpBonus: number) => void | Promise<void>;
+  onSaveBatch?: (txs: Transaction[], totalXpBonus: number) => void | Promise<void>;
   initialFiles?: (File | string)[] | null;
 }
 
@@ -74,6 +74,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const [formError, setFormError] = useState<string>("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // AI Configuration
   const [geminiApiKey, setGeminiApiKey] = useState<string>("");
@@ -218,7 +219,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !isSaving) onClose();
     };
 
     const handlePaste = (e: ClipboardEvent) => {
@@ -243,7 +244,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("paste", handlePaste);
     };
-  }, [isOpen, onClose, enqueueFiles]);
+  }, [isOpen, onClose, enqueueFiles, isSaving]);
 
   // Handle Dropzone
   const handleDrop = (e: React.DragEvent) => {
@@ -327,7 +328,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
     const finalCategory: TransactionCategory = item.type === "income" ? "Income" : item.category;
 
     return {
-      id: crypto.randomUUID(),
+      id: item.id,
       name: (item.name || (item.type === "income" ? "Income Transfer" : "Bank Payment")).trim(),
       amount: finalAmount,
       date: item.date || new Date().toISOString().slice(0, 10),
@@ -338,9 +339,9 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
   };
 
   // Handle Save Current Slip & Next
-  const handleSaveCurrent = (e: React.FormEvent) => {
+  const handleSaveCurrent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentItem) return;
+    if (!currentItem || isSaving) return;
     setFormError("");
 
     const tx = itemToTransaction(currentItem);
@@ -349,7 +350,13 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
       return;
     }
 
-    onSave(tx, 25);
+    setIsSaving(true);
+    try {
+      await onSave(tx, 25);
+    } catch {
+      setFormError(t("ux.saveFailed"));
+      return;
+    } finally { setIsSaving(false); }
 
     // Mark current item as saved
     setQueue((prev) =>
@@ -370,7 +377,8 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
   };
 
   // Handle Save All Batch
-  const handleSaveAllBatch = () => {
+  const handleSaveAllBatch = async () => {
+    if (isSaving) return;
     setFormError("");
     const validTxs: Transaction[] = [];
 
@@ -388,13 +396,16 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
 
     const totalXp = validTxs.length * 25;
 
-    if (onSaveBatch) {
-      onSaveBatch(validTxs, totalXp);
-    } else {
-      validTxs.forEach((tx) => onSave(tx, 25));
-    }
-
-    onClose();
+    setIsSaving(true);
+    try {
+      if (onSaveBatch) {
+        await onSaveBatch(validTxs, totalXp);
+      } else {
+        for (const tx of validTxs) await onSave(tx, 25);
+      }
+      onClose();
+    } catch { setFormError(t("ux.saveFailed")); }
+    finally { setIsSaving(false); }
   };
 
   const totalSlips = queue.length;
@@ -410,7 +421,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={() => { if (!isSaving) onClose(); }}
             className="fixed inset-0 bg-black/60 backdrop-blur-xs"
           />
 
@@ -438,12 +449,12 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                         ? t("slipScanner.batchQueueTitle", { count: totalSlips })
                         : t("slipScanner.title")}
                     </h2>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-500/20">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-500/20">
                       <Sparkle size={11} weight="fill" className="text-emerald-500" />
                       +{totalSlips > 1 ? unsavedCount * 25 : 25} XP
                     </span>
                   </div>
-                  <p className="text-[11px] text-zinc-600 dark:text-zinc-400 truncate max-w-[260px] sm:max-w-md mt-0.5">
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 truncate max-w-[260px] sm:max-w-md mt-0.5">
                     {totalSlips > 1
                       ? t("slipScanner.batchCombo", { xp: unsavedCount * 25 })
                       : t("slipScanner.subtitle")}
@@ -470,7 +481,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={() => { if (!isSaving) onClose(); }}
                   className="rounded-lg p-2 text-[var(--color-ink-soft)] hover:bg-[var(--color-line-subtle)] hover:text-[var(--color-ink)]"
                 >
                   <X size={18} />
@@ -495,11 +506,11 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                           {t("slipScanner.geminiKeyLabel")}
                         </span>
                       </div>
-                      <span className="text-[10px] font-mono text-[var(--color-ink-soft)]">
+                      <span className="text-xs font-mono text-[var(--color-ink-soft)]">
                         {geminiApiKey ? `Active: ${geminiApiKey.slice(0, 6)}...` : t("slipScanner.useLocalOnly")}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[var(--color-ink-soft)] leading-relaxed">
+                    <p className="text-xs text-[var(--color-ink-soft)] leading-relaxed">
                       {t("slipScanner.geminiKeyHint")}
                     </p>
                     <div className="flex gap-2">
@@ -528,7 +539,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                       )}
                     </div>
                     {apiKeySavedNotice && (
-                      <p className="text-[11px] font-semibold text-[var(--jade-ink)]">
+                      <p className="text-xs font-semibold text-[var(--jade-ink)]">
                         ✓ {t("slipScanner.keySaved")}
                       </p>
                     )}
@@ -540,7 +551,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
             {/* Top Multi-Slip Thumbnail Queue Strip (When 1 or more slips exist) */}
             {totalSlips > 0 && (
               <div className="flex items-center gap-2 overflow-x-auto border-b border-[var(--color-line)] bg-[var(--color-surface-subtle)]/40 px-5 sm:px-6 py-2.5 shrink-0 no-scrollbar">
-                <span className="text-[11px] font-bold text-[var(--color-ink-soft)] shrink-0 mr-1">
+                <span className="text-xs font-bold text-[var(--color-ink-soft)] shrink-0 mr-1">
                   {t("slipScanner.queueTitle")}:
                 </span>
 
@@ -567,32 +578,32 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
 
                       {/* Info & Status Badge */}
                       <div className="text-left pr-1 min-w-[75px] max-w-[130px]">
-                        <p className="text-[11px] font-bold text-[var(--color-ink)] truncate">
+                        <p className="text-xs font-bold text-[var(--color-ink)] truncate">
                           {item.amountStr ? `฿${item.amountStr}` : `Slip #${idx + 1}`}
                         </p>
                         <div className="flex items-center gap-1">
                           {item.status === "analyzing" && (
-                            <span className="text-[10px] text-[var(--amber-ink)] font-mono animate-pulse">
+                            <span className="text-xs text-[var(--amber-ink)] font-mono animate-pulse">
                               {item.progress}%
                             </span>
                           )}
                           {item.status === "ready" && !item.hasDetectedDate && (
-                            <span className="text-[10px] text-[var(--amber-ink)] font-semibold flex items-center gap-0.5" title={t("slipScanner.dateNotDetected")}>
+                            <span className="text-xs text-[var(--amber-ink)] font-semibold flex items-center gap-0.5" title={t("slipScanner.dateNotDetected")}>
                               <Warning size={10} weight="fill" /> {t("slipScanner.dateWarningBadge")}
                             </span>
                           )}
                           {item.status === "ready" && item.hasDetectedDate && (
-                            <span className="text-[10px] text-[var(--jade-ink)] font-semibold flex items-center gap-0.5">
+                            <span className="text-xs text-[var(--jade-ink)] font-semibold flex items-center gap-0.5">
                               <Check size={10} weight="bold" /> Ready
                             </span>
                           )}
                           {item.status === "saved" && (
-                            <span className="text-[10px] text-[var(--jade)] font-semibold flex items-center gap-0.5">
+                            <span className="text-xs text-[var(--jade)] font-semibold flex items-center gap-0.5">
                               <CheckCircle size={11} weight="fill" /> Saved
                             </span>
                           )}
                           {item.status === "error" && (
-                            <span className="text-[10px] text-[var(--rose-ink)] font-semibold flex items-center gap-0.5">
+                            <span className="text-xs text-[var(--rose-ink)] font-semibold flex items-center gap-0.5">
                               <WarningCircle size={11} weight="bold" /> Review
                             </span>
                           )}
@@ -678,7 +689,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                     <span>Browse Slip Images (Single or Multi-select)</span>
                   </div>
 
-                  <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-[11px] text-zinc-600 dark:text-zinc-400">
+                  <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-zinc-600 dark:text-zinc-400">
                     <span className="flex items-center gap-1">
                       <Check size={12} weight="bold" className="text-emerald-500" />
                       All Thai Banks (Krungthai, KBank, SCB, BBL, etc.)
@@ -689,7 +700,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                     </span>
                   </div>
 
-                  <p className="mt-4 text-[10px] font-mono text-[var(--color-ink-soft)] opacity-75">
+                  <p className="mt-4 text-xs font-mono text-[var(--color-ink-soft)] opacity-75">
                     {t("slipScanner.pasteHint")}
                   </p>
                 </div>
@@ -727,7 +738,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                               <p className="text-xs font-bold tracking-tight text-white mb-1">
                                 {t("slipScanner.analyzing")}
                               </p>
-                              <p className="text-[11px] text-zinc-300 mb-3 font-mono">
+                              <p className="text-xs text-zinc-300 mb-3 font-mono">
                                 {currentItem.step || "Extracting details..."}
                               </p>
 
@@ -747,7 +758,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
 
                       {/* Change image or remove */}
                       <div className="mt-2 flex items-center justify-between text-xs px-1">
-                        <span className="font-mono text-[11px] text-[var(--color-ink-soft)]">
+                        <span className="font-mono text-xs text-[var(--color-ink-soft)]">
                           {t("slipScanner.slipIndex", { current: activeIndex + 1, total: totalSlips })}
                         </span>
                         <button
@@ -790,7 +801,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                             <span className="font-semibold text-[var(--color-ink-soft)]">
                               {t("slipScanner.detectedRef")}
                             </span>
-                            <span className="font-mono text-[11px] text-[var(--color-ink-soft)]">
+                            <span className="font-mono text-xs text-[var(--color-ink-soft)]">
                               {currentItem.result.refNumber}
                             </span>
                           </div>
@@ -798,7 +809,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
 
                         <div className="flex items-center justify-between pt-0.5">
                           <span className="font-semibold text-[var(--color-ink-soft)]">Engine</span>
-                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
                             <CheckCircle size={12} weight="fill" />
                             {currentItem.result.engine === "gemini"
                               ? t("slipScanner.engineGemini")
@@ -811,7 +822,9 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
 
                   {/* Right Column (7 Cols): Editable Transaction Form */}
                   <div className="lg:col-span-7">
-                    <form onSubmit={handleSaveCurrent} className="space-y-3.5">
+                    <form onSubmit={handleSaveCurrent} className="space-y-3.5" aria-busy={isSaving}>
+                      <fieldset disabled={isSaving} className="space-y-3.5">
+                      {isSaving && <p role="status">{t("ux.saving")}</p>}
                       {/* Income vs Expense Toggle */}
                       <div>
                         <div className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] p-1">
@@ -902,7 +915,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                               {t("quickAdd.dateLabel")}
                             </label>
                             {!currentItem.hasDetectedDate && (
-                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                              <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
                                 <Warning size={11} weight="fill" /> {t("slipScanner.dateWarningBadge")}
                               </span>
                             )}
@@ -914,7 +927,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                             className="w-full"
                           />
                           {!currentItem.hasDetectedDate && (
-                            <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
                               {t("slipScanner.dateNotDetected")}
                             </p>
                           )}
@@ -1011,7 +1024,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                       <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-[var(--color-line)]">
                         <button
                           type="button"
-                          onClick={onClose}
+                          onClick={() => { if (!isSaving) onClose(); }}
                           className="rounded-xl px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)] transition"
                         >
                           {t("quickAdd.cancel")}
@@ -1039,6 +1052,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                           </button>
                         </div>
                       </div>
+                    </fieldset>
                     </form>
                   </div>
                 </div>

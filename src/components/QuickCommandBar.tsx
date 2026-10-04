@@ -34,7 +34,7 @@ import {
 } from "../utils/presetManager";
 import { PresetManagerModal } from "./PresetManagerModal";
 
-const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 interface QuickCommandBarProps {
   transactions: Transaction[];
@@ -43,7 +43,8 @@ interface QuickCommandBarProps {
   activeMonth: string;
   presets: PresetItem[];
   setPresets: (presets: PresetItem[]) => void;
-  onLogTransaction: (tx: Transaction) => void;
+  onLogTransaction: (tx: Transaction) => void | Promise<void>;
+  onConfigureBudget?: () => void;
 }
 
 export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
@@ -54,12 +55,17 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
   presets,
   setPresets,
   onLogTransaction,
+  onConfigureBudget,
 }) => {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [inputVal, setInputVal] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const pendingTxRef = useRef<Transaction | null>(null);
+  const failedPresetRef = useRef<{ presetId: string; transactionId: string } | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -77,6 +83,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       todayStr
     );
   }, [transactions, allocations, income, activeMonth, todayStr]);
+  const hasBudget = income > 0 || transactions.some(tx => tx.date.startsWith(activeMonth) && tx.category === "Income" && tx.amount > 0);
 
   // 2. Realtime Parsed Natural Language State
   const parsedTx: ParsedQuickTransaction = useMemo(() => {
@@ -144,12 +151,13 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
   }, [autocompleteList]);
 
   // Handle Preset Click (1-Tap Fast Log)
-  const handleTapPreset = (preset: PresetItem) => {
+  const handleTapPreset = async (preset: PresetItem) => {
+    if (isSaving) return;
     const isIncome = preset.type === "income" || preset.category === "Income";
     const finalAmount = isIncome ? Math.abs(preset.amount) : -Math.abs(preset.amount);
 
     const newTx: Transaction = {
-      id: crypto.randomUUID(),
+      id: failedPresetRef.current?.presetId === preset.id ? failedPresetRef.current.transactionId : crypto.randomUUID(),
       name: preset.name,
       amount: finalAmount,
       date: todayStr,
@@ -157,19 +165,24 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       cleared: true,
     };
 
-    // Increment usage frequency
-    const updatedPresets = incrementPresetUsage(preset.id, presets);
-    setPresets(updatedPresets);
-
-    onLogTransaction(newTx);
+    setIsSaving(true);
+    setSaveError("");
+    try {
+      await onLogTransaction(newTx);
+      failedPresetRef.current = null;
+      setPresets(incrementPresetUsage(preset.id, presets));
+    } catch {
+      failedPresetRef.current = { presetId: preset.id, transactionId: newTx.id };
+      setSaveError(t("ux.saveFailed"));
+    } finally { setIsSaving(false); }
   };
 
   // Handle Submitting Text Input
-  const handleCommitInput = () => {
-    if (!parsedTx.isValid) return;
+  const handleCommitInput = async () => {
+    if (!parsedTx.isValid || isSaving) return;
 
     const newTx: Transaction = {
-      id: crypto.randomUUID(),
+      id: pendingTxRef.current?.id || crypto.randomUUID(),
       name: parsedTx.name,
       amount: parsedTx.amount,
       date: todayStr,
@@ -178,10 +191,17 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       notes: parsedTx.notes,
     };
 
-    onLogTransaction(newTx);
-    setInputVal("");
-    setIsFocused(false);
-    inputRef.current?.blur();
+    pendingTxRef.current = newTx;
+    setIsSaving(true);
+    setSaveError("");
+    try {
+      await onLogTransaction(newTx);
+      pendingTxRef.current = null;
+      setInputVal("");
+      setIsFocused(false);
+      inputRef.current?.blur();
+    } catch { setSaveError(t("ux.saveFailed")); }
+    finally { setIsSaving(false); }
   };
 
   // Handle Keyboard Navigation in Autocomplete
@@ -231,70 +251,38 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       return;
     }
 
-    if (e.key === "Tab" && highlightedIndex >= 0 && highlightedIndex < autocompleteList.length) {
-      e.preventDefault();
-      const item = autocompleteList[highlightedIndex];
-      const newTx: Transaction = {
-        id: crypto.randomUUID(),
-        name: item.name,
-        amount: item.amount,
-        date: todayStr,
-        category: item.category,
-        cleared: true,
-      };
-      onLogTransaction(newTx);
-      setInputVal("");
+    if (e.key === "Tab") {
       setIsFocused(false);
-      inputRef.current?.blur();
       return;
     }
-
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (highlightedIndex >= 0 && highlightedIndex < autocompleteList.length) {
-        const item = autocompleteList[highlightedIndex];
-        const newTx: Transaction = {
-          id: crypto.randomUUID(),
-          name: item.name,
-          amount: item.amount,
-          date: todayStr,
-          category: item.category,
-          cleared: true,
-        };
-        onLogTransaction(newTx);
-        setInputVal("");
-        setIsFocused(false);
-        inputRef.current?.blur();
+        handleSelectAutocomplete(autocompleteList[highlightedIndex]);
       } else if (parsedTx.isValid) {
-        handleCommitInput();
+        void handleCommitInput();
       }
     }
   };
 
+  // Choosing a suggestion fills the input; only explicit submit commits it.
   const handleSelectAutocomplete = (item: AutocompleteItem) => {
-    const newTx: Transaction = {
-      id: crypto.randomUUID(),
-      name: item.name,
-      amount: item.amount,
-      date: todayStr,
-      category: item.category,
-      cleared: true,
-    };
-    onLogTransaction(newTx);
-    setInputVal("");
+    setInputVal(`${item.category === "Income" ? "+" : ""}${item.name} ${Math.abs(item.amount)}`);
+    setHighlightedIndex(-1);
     setIsFocused(false);
+    inputRef.current?.focus();
   };
 
   // Safe to spend status tone
   const statusColorClass =
-    safeStats.status === "comfortable"
+    !hasBudget ? "text-[var(--color-ink-soft)] bg-[var(--color-surface-subtle)] border-[var(--color-line)]" : safeStats.status === "comfortable"
       ? "text-[var(--jade-ink)] bg-[var(--jade-soft)] border-[var(--jade)]/30"
       : safeStats.status === "caution"
       ? "text-[var(--amber-ink)] bg-[var(--amber-soft)] border-[var(--amber)]/30"
       : "text-[var(--rose-ink)] bg-[var(--rose-soft)] border-[var(--rose)]/30";
 
   const statusDotClass =
-    safeStats.status === "comfortable"
+    !hasBudget ? "bg-[var(--color-ink-soft)]" : safeStats.status === "comfortable"
       ? "bg-[var(--jade)]"
       : safeStats.status === "caution"
       ? "bg-[var(--amber)]"
@@ -317,8 +305,8 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
           <div>
             <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-ink)] flex items-center gap-1.5">
               <span>{t("quickBar.presets")}</span>
-              <span className="font-mono text-[10px] font-normal text-[var(--color-ink-soft)] lowercase">
-                · 1-tap logging
+              <span className="font-mono text-xs font-normal text-[var(--color-ink-soft)] lowercase">
+                · {t("ux.loggingDate", { date: todayStr })}
               </span>
             </h2>
           </div>
@@ -335,9 +323,9 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
           >
             <span className={`h-2 w-2 rounded-full animate-pulse ${statusDotClass}`} />
             <span>
-              {t("safeToSpend.badge", { amount: thb.format(safeStats.dailySafeToSpend) })}
+              {!hasBudget ? t("ux.noPlan") : activeMonth === todayStr.slice(0, 7) ? t("safeToSpend.badge", { amount: thb.format(safeStats.dailySafeToSpend) }) : t("safeToSpend.monthLeft", { amount: thb.format(safeStats.monthRemaining) })}
             </span>
-            <span className="text-[11px] font-normal opacity-90 hidden sm:inline">
+            <span className={`text-xs font-normal opacity-90 ${hasBudget && activeMonth === todayStr.slice(0, 7) ? "hidden sm:inline" : "hidden"}`}>
               · {t("safeToSpend.todayLeft", { amount: thb.format(safeStats.todayRemaining) })}
             </span>
             <Info size={13} weight="bold" className="opacity-80" />
@@ -355,9 +343,11 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
             transition={{ duration: 0.2 }}
             className="overflow-hidden mb-3.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] p-3 text-xs"
           >
+            <p className="mb-3 leading-relaxed">{t("ux.budgetExplanation", { amount: thb.format(income) })}</p>
+            {!hasBudget && onConfigureBudget && <button type="button" onClick={onConfigureBudget} className="mb-3 text-sm font-semibold underline">{t("ux.reviewBudget")}</button>}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <div className="text-[10px] font-semibold text-[var(--color-ink-soft)] uppercase">
+                <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
                   {t("safeToSpend.monthBudget", { amount: "" }).replace(":", "")}
                 </div>
                 <div className="font-mono font-bold text-[var(--color-ink)]">
@@ -365,7 +355,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
                 </div>
               </div>
               <div>
-                <div className="text-[10px] font-semibold text-[var(--color-ink-soft)] uppercase">
+                <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
                   {t("safeToSpend.monthSpent", { amount: "" }).replace(":", "")}
                 </div>
                 <div className="font-mono font-bold text-[var(--rose-ink)]">
@@ -373,19 +363,19 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
                 </div>
               </div>
               <div>
-                <div className="text-[10px] font-semibold text-[var(--color-ink-soft)] uppercase">
+                <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
                   {t("safeToSpend.monthLeft", { amount: "" }).replace(":", "")}
                 </div>
                 <div className="font-mono font-bold text-[var(--jade-ink)]">
                   ฿{thb.format(safeStats.monthRemaining)}
                 </div>
               </div>
-              <div>
-                <div className="text-[10px] font-semibold text-[var(--color-ink-soft)] uppercase">
+              <div hidden={activeMonth !== todayStr.slice(0, 7)}>
+                <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
                   {t("safeToSpend.daysLeft", { days: safeStats.daysRemainingInMonth })}
                 </div>
                 <div className="font-mono font-semibold text-[var(--color-ink-soft)]">
-                  {safeStats.daysRemainingInMonth} / {safeStats.totalDaysInMonth} days
+                  {safeStats.daysRemainingInMonth} / {safeStats.totalDaysInMonth}
                 </div>
               </div>
             </div>
@@ -393,6 +383,9 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
         )}
       </AnimatePresence>
 
+      {saveError && <p role="alert" className="mb-3 text-sm text-[var(--rose-ink)]">{saveError}</p>}
+      {isSaving && <p role="status" className="mb-3 text-sm">{t("ux.saving")}</p>}
+      <fieldset disabled={isSaving} className="min-w-0">
       {/* Main Single-Line Natural Language Command Bar */}
       <div className="relative">
         <div
@@ -408,6 +401,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
 
           <input
             ref={inputRef}
+            aria-label={t("quickBar.presets")}
             type="text"
             role="combobox"
             aria-autocomplete="list"
@@ -442,7 +436,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
                 <X size={15} />
               </button>
             ) : (
-              <span className="hidden sm:inline-flex items-center gap-1 rounded-md bg-[var(--color-surface-subtle)] border border-[var(--color-line)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[var(--color-ink-soft)] select-none">
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-md bg-[var(--color-surface-subtle)] border border-[var(--color-line)] px-1.5 py-0.5 font-mono text-xs font-semibold text-[var(--color-ink-soft)] select-none">
                 / or N
               </span>
             )}
@@ -468,8 +462,8 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
             animate={{ opacity: 1, y: 0 }}
             className="mt-2 flex flex-wrap items-center gap-2 text-xs"
           >
-            <span className="text-[11px] font-semibold text-[var(--color-ink-soft)]">
-              Preview:
+            <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
+              {t("ux.preview")}:
             </span>
             <span className="font-bold text-[var(--color-ink)] bg-[var(--color-surface-subtle)] border border-[var(--color-line)] px-2.5 py-0.5 rounded-lg">
               {parsedTx.name}
@@ -484,7 +478,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               {parsedTx.type === "income" ? "+" : "-"}฿{thb.format(Math.abs(parsedTx.amount))}
             </span>
             <span
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-0.5 font-medium border border-[var(--color-line)] bg-[var(--color-surface)] text-[11px]"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-0.5 font-medium border border-[var(--color-line)] bg-[var(--color-surface)] text-xs"
             >
               <span
                 className="h-1.5 w-1.5 rounded-full"
@@ -493,8 +487,8 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               {t(`category.${parsedTx.category}`)}
             </span>
             {parsedTx.notes && (
-              <span className="text-[10px] text-[var(--color-ink-soft)] italic">
-                Note: {parsedTx.notes}
+              <span className="text-xs text-[var(--color-ink-soft)] italic">
+                {t("ux.note")}: {parsedTx.notes}
               </span>
             )}
           </motion.div>
@@ -513,7 +507,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               transition={{ duration: 0.15 }}
               className="absolute left-0 right-0 top-full z-40 mt-1.5 overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-1.5 shadow-xl backdrop-blur-md"
             >
-              <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-ink-soft)] flex items-center justify-between">
+              <div className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-[var(--color-ink-soft)] flex items-center justify-between">
                 <span>{t("quickBar.autocompleteHint")}</span>
                 <span>{autocompleteList.length} matches</span>
               </div>
@@ -541,7 +535,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className="text-base shrink-0">{item.icon || "📝"}</span>
                         <span className="font-semibold truncate">{item.name}</span>
-                        <span className="inline-flex items-center gap-1 text-[10px] text-[var(--color-ink-soft)] font-normal border border-[var(--color-line)] rounded px-1.5 py-0.2 bg-[var(--color-surface)]">
+                        <span className="inline-flex items-center gap-1 text-xs text-[var(--color-ink-soft)] font-normal border border-[var(--color-line)] rounded px-1.5 py-0.2 bg-[var(--color-surface)]">
                           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: catColor }} />
                           {t(`category.${item.category}`)}
                         </span>
@@ -556,7 +550,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
                           {isPositive ? "+" : "-"}฿{thb.format(Math.abs(item.amount))}
                         </span>
                         {isHighlighted && (
-                          <span className="rounded bg-[var(--color-surface)] border border-[var(--color-line)] px-1.5 py-0.2 font-mono text-[9px] font-bold text-[var(--primary-ink)]">
+                          <span className="rounded bg-[var(--color-surface)] border border-[var(--color-line)] px-1.5 py-0.2 font-mono text-xs font-bold text-[var(--primary-ink)]">
                             ↵ Enter / Tab
                           </span>
                         )}
@@ -585,7 +579,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               {preset.icon}
             </span>
             <span className="truncate">{preset.name}</span>
-            <span className="font-mono text-[11px] font-bold text-[var(--color-ink-soft)] group-hover:text-[var(--primary-ink)]">
+            <span className="font-mono text-xs font-bold text-[var(--color-ink-soft)] group-hover:text-[var(--primary-ink)]">
               ฿{preset.amount}
             </span>
           </motion.button>
@@ -604,6 +598,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       </div>
 
       {/* Presets CRUD Manager Modal */}
+      </fieldset>
       <PresetManagerModal
         isOpen={isPresetModalOpen}
         onClose={() => setIsPresetModalOpen(false)}

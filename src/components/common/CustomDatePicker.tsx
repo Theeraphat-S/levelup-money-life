@@ -417,7 +417,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
                   {weekdays.map((w, i) => (
                     <span
                       key={w}
-                      className={`text-[11px] font-semibold ${
+                      className={`text-xs font-semibold ${
                         i === 0 || i === 6
                           ? "text-[var(--rose-ink)]/70 dark:text-[var(--rose-ink)]/80"
                           : "text-[var(--color-ink-soft)]"
