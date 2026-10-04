@@ -41,11 +41,6 @@ function occurrenceDate(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(Math.min(day, maxDay)).padStart(2, "0")}`;
 }
 
-function formatDate(date: string): string {
-  const [year, month, day] = date.split("-");
-  return `${year}-${month}-${day}`;
-}
-
 export interface RecurringBillsProps {
   bills: RecurringBill[];
   transactions: Transaction[];
@@ -113,20 +108,8 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
     }
     const editingBill = dialog?.type === "edit" ? dialog.bill : undefined;
     const [year, activeMonthNumber] = activeMonth.split("-").map(Number);
-    let startYear = year;
-    let startMonth = form.recurrence === "yearly" ? dueMonth : activeMonthNumber;
-    let startsOn = occurrenceDate(startYear, startMonth, dueDay);
-    if (!editingBill && activeMonth === today.slice(0, 7) && startsOn < today) {
-      if (form.recurrence === "yearly") {
-        startYear += 1;
-      } else if (startMonth === 12) {
-        startYear += 1;
-        startMonth = 1;
-      } else {
-        startMonth += 1;
-      }
-      startsOn = occurrenceDate(startYear, startMonth, dueDay);
-    }
+    const startMonth = form.recurrence === "yearly" ? dueMonth : activeMonthNumber;
+    const startsOn = occurrenceDate(year, startMonth, dueDay);
     const nextBill: RecurringBill = {
       id: editingBill?.id || crypto.randomUUID(),
       name,
@@ -224,7 +207,7 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
                   </div>
                   <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
                     {t(bill.recurrence === "monthly" ? "bills.monthly" : "bills.yearly")}
-                    {nextOccurrence ? ` · ${nextOccurrence.overdue ? t("bills.overdue") : t("bills.dueOn", { date: formatDate(nextOccurrence.dueDate) })}` : ` · ${t("bills.currentPeriodPaid")}`}
+                    {nextOccurrence ? ` · ${nextOccurrence.overdue ? t("bills.overdue") : t("bills.dueOn", { date: nextOccurrence.dueDate })}` : ` · ${t("bills.currentPeriodPaid")}`}
                   </p>
                   {nextOccurrence && <p className={`mt-1 text-xs font-semibold ${nextOccurrence.overdue ? "text-[var(--rose-ink)]" : "text-[var(--color-ink-soft)]"}`}>{t("bills.unpaidOccurrence", { date: nextOccurrence.dueDate })}</p>}
                 </div>
@@ -310,7 +293,7 @@ export const UpcomingBillsSummary: React.FC<{
         <div className="mt-3 space-y-2">
           {visible.map((occurrence) => (
             <div key={`${occurrence.bill.id}-${occurrence.dueDate}`} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3 py-2">
-              <div className="min-w-0"><p className="truncate text-xs font-semibold text-[var(--color-ink)]">{occurrence.bill.name}</p><p className={`text-[10px] ${occurrence.overdue ? "font-semibold text-[var(--rose-ink)]" : "text-[var(--color-ink-soft)]"}`}>{occurrence.overdue ? t("bills.overdue") : t("bills.dueOn", { date: formatDate(occurrence.dueDate) })}{occurrence.bill.estimated ? ` · ${t("bills.estimated")}` : ""}</p></div>
+              <div className="min-w-0"><p className="truncate text-xs font-semibold text-[var(--color-ink)]">{occurrence.bill.name}</p><p className={`text-[10px] ${occurrence.overdue ? "font-semibold text-[var(--rose-ink)]" : "text-[var(--color-ink-soft)]"}`}>{occurrence.overdue ? t("bills.overdue") : t("bills.dueOn", { date: occurrence.dueDate })}{occurrence.bill.estimated ? ` · ${t("bills.estimated")}` : ""}</p></div>
               <span className="whitespace-nowrap font-mono text-xs font-bold text-[var(--color-ink)]">฿{thb.format(occurrence.bill.amount)}</span>
             </div>
           ))}

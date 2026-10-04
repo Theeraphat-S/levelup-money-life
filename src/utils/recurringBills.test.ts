@@ -16,13 +16,18 @@ const monthlyBill: RecurringBill = {
 };
 
 describe("recurring bills", () => {
-  it("clamps monthly due dates to the last day of shorter months and marks older unpaid bills overdue", () => {
+  it("creates only the monthly occurrence in the selected month and clamps short months", () => {
     const occurrences = getUnpaidBillOccurrences([monthlyBill], "2026-10", "2026-10-04");
 
     expect(occurrences.map(({ dueDate, overdue }) => [dueDate, overdue])).toEqual([
-      ["2026-08-31", true],
-      ["2026-09-30", true],
       ["2026-10-31", false],
+    ]);
+  });
+
+  it("marks a selected-month bill overdue after its due day", () => {
+    const bill = { ...monthlyBill, dueDay: 2, startsOn: "2026-08-02" };
+    expect(getUnpaidBillOccurrences([bill], "2026-10", "2026-10-04").map(({ dueDate, overdue }) => [dueDate, overdue])).toEqual([
+      ["2026-10-02", true],
     ]);
   });
 
@@ -34,9 +39,7 @@ describe("recurring bills", () => {
       transactionId: "payment-1",
     });
 
-    expect(getUnpaidBillOccurrences([bill], "2026-09", "2026-09-04").map(({ dueDate }) => dueDate)).toEqual([
-      "2026-09-30",
-    ]);
+    expect(getUnpaidBillOccurrences([bill], "2026-09", "2026-09-04").map(({ dueDate }) => dueDate)).toEqual(["2026-09-30"]);
   });
 
   it("makes a paid occurrence unpaid again when its ledger transaction has been removed", () => {
@@ -76,9 +79,8 @@ describe("recurring bills", () => {
       startsOn: "2025-11-15",
     };
 
-    expect(getUnpaidBillOccurrences([bill], "2026-10", "2026-10-04")).toHaveLength(1);
+    expect(getUnpaidBillOccurrences([bill], "2026-10", "2026-10-04")).toHaveLength(0);
     expect(getUnpaidBillOccurrences([bill], "2026-11", "2026-10-04").map(({ dueDate }) => dueDate)).toEqual([
-      "2025-11-15",
       "2026-11-15",
     ]);
   });

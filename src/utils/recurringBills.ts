@@ -30,31 +30,14 @@ export function getUnpaidBillOccurrences(
   const occurrences: BillOccurrence[] = [];
 
   bills.filter((bill) => bill.active).forEach((bill) => {
-    const [startYear, startMonth] = bill.startsOn.split("-").map(Number);
+    if (`${activeMonth}-${String(getDaysInMonth(selectedYear, selectedMonth)).padStart(2, "0")}` < bill.startsOn) return;
     const payments = new Set(bill.payments
       .filter((payment) => (!transactionIds || transactionIds.has(payment.transactionId)) && payment.paidOn <= referenceDate)
       .map((payment) => payment.dueDate));
-
-    if (bill.recurrence === "monthly") {
-      for (let year = startYear; year <= selectedYear; year++) {
-        const firstMonth = year === startYear ? startMonth : 1;
-        const lastMonth = year === selectedYear ? selectedMonth : 12;
-        for (let month = firstMonth; month <= lastMonth; month++) {
-          const dueDate = dueDateForMonth(year, month, bill.dueDay);
-          if (dueDate < bill.startsOn || payments.has(dueDate)) continue;
-          occurrences.push({ bill, dueDate, overdue: dueDate < referenceDate });
-        }
-      }
-      return;
-    }
-
-    const dueMonth = bill.dueMonth ?? startMonth;
-    for (let year = startYear; year <= selectedYear; year++) {
-      if (year === selectedYear && dueMonth > selectedMonth) continue;
-      const dueDate = dueDateForMonth(year, dueMonth, bill.dueDay);
-      if (dueDate < bill.startsOn || payments.has(dueDate)) continue;
-      occurrences.push({ bill, dueDate, overdue: dueDate < referenceDate });
-    }
+    if (bill.recurrence === "yearly" && (bill.dueMonth ?? Number(bill.startsOn.slice(5, 7))) !== selectedMonth) return;
+    const dueDate = dueDateForMonth(selectedYear, selectedMonth, bill.dueDay);
+    if (dueDate < bill.startsOn || payments.has(dueDate)) return;
+    occurrences.push({ bill, dueDate, overdue: dueDate < referenceDate });
   });
 
   return occurrences.sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.bill.name.localeCompare(b.bill.name));

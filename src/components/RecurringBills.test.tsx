@@ -22,10 +22,7 @@ describe("RecurringBillsManager", () => {
     fireEvent.change(screen.getByLabelText("Planned amount (THB)"), { target: { value: "799" } });
     fireEvent.click(screen.getByRole("button", { name: "Save bill" }));
 
-    const [year, month, day] = today.split("-").map(Number);
-    const expectedStart = day === 1
-      ? today
-      : `${month === 12 ? year + 1 : year}-${String(month === 12 ? 1 : month + 1).padStart(2, "0")}-01`;
+    const expectedStart = `${today.slice(0, 7)}-01`;
     await waitFor(() => expect(onSaveBills).toHaveBeenCalledWith([
       expect.objectContaining({ name: "Internet", amount: 799, category: "Home", recurrence: "monthly", active: true, startsOn: expectedStart }),
     ]));
