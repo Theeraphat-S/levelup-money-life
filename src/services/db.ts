@@ -1,3 +1,4 @@
+import { normalizeIconKey } from "../components/icons/registry";
 import Database from "@tauri-apps/plugin-sql";
 import type { Allocation, Quest, SavingsGoal, TaxProfile, Transaction } from "../types";
 import { getDefaultTaxProfile } from "./taxCalculator";
@@ -349,7 +350,7 @@ export const INITIAL_SAVINGS_GOALS: SavingsGoal[] = [
     targetAmount: 150000,
     currentAmount: 45000,
     targetDate: "2026-12-31",
-    icon: "ShieldCheck",
+    icon: "shield",
     color: "#4D8E75",
     status: "active",
     milestonesReached: [25],
@@ -363,7 +364,7 @@ export const INITIAL_SAVINGS_GOALS: SavingsGoal[] = [
     targetAmount: 40000,
     currentAmount: 20000,
     targetDate: "2026-11-30",
-    icon: "AirplaneTilt",
+    icon: "airplane",
     color: "#C99A4B",
     status: "active",
     milestonesReached: [25, 50],
@@ -410,7 +411,7 @@ export async function getSavingsGoals(): Promise<SavingsGoal[]> {
       targetAmount: r.target_amount,
       currentAmount: r.current_amount,
       targetDate: r.target_date || undefined,
-      icon: r.icon,
+      icon: normalizeIconKey(r.icon, "savings"),
       color: r.color || undefined,
       status: (r.status as SavingsGoal["status"]) || "active",
       milestonesReached: r.milestones_reached ? JSON.parse(r.milestones_reached) : [],

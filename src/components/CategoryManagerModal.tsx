@@ -7,14 +7,14 @@ import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useCategories } from "../hooks/useCategories";
 import type { BudgetBucket } from "../types";
 import {
-  CATEGORY_ICON_KEYS,
   CATEGORY_PALETTE,
   LOCKED_CATEGORY_IDS,
   createCustomCategory,
   isCategoryNameTaken,
   type CategoryDef,
 } from "../utils/categories";
-import { CATEGORY_ICONS, CategoryIcon } from "./common/CategoryIcon";
+import { CategoryIcon } from "./common/CategoryIcon";
+import { AppIcon, PICKER_ICON_KEYS } from "./icons/registry";
 
 const BUCKETS: BudgetBucket[] = ["Needs", "Wants", "Savings"];
 
@@ -259,8 +259,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({ isOp
                   <fieldset>
                     <legend className={labelClass}>{t("categories.icon")}</legend>
                     <div className="flex max-h-28 flex-wrap gap-1 overflow-y-auto rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-1.5">
-                      {CATEGORY_ICON_KEYS.map((key) => {
-                        const Icon = CATEGORY_ICONS[key];
+                      {PICKER_ICON_KEYS.map((key) => {
                         const selected = draft.icon === key;
                         return (
                           <button
@@ -271,7 +270,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({ isOp
                             onClick={() => setDraft({ ...draft, icon: key })}
                             className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${selected ? "bg-[var(--primary-soft)] ring-2 ring-[var(--primary)]" : "hover:bg-[var(--color-surface-subtle)]"}`}
                           >
-                            <Icon size={17} weight="duotone" color={draft.color} />
+                            <AppIcon name={key} size={17} weight="duotone" color={draft.color} />
                           </button>
                         );
                       })}

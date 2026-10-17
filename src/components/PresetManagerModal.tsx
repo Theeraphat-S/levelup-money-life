@@ -24,13 +24,10 @@ import {
 import { CustomSelect } from "./common/CustomSelect";
 import { CategoryPicker } from "./common/CategoryPicker";
 import { CategoryIcon } from "./common/CategoryIcon";
+import { PresetIcon } from "./common/PresetIcon";
+import { AppIcon, PICKER_ICON_KEYS } from "./icons/registry";
 import { useCategories } from "../hooks/useCategories";
 
-const EMOJI_OPTIONS = [
-  "☕", "🍱", "🚇", "🛒", "⛽", "🥤", "🍿", "🍜",
-  "🍔", "🍰", "💊", "⚡", "🏠", "📚", "🎮", "💳",
-  "💎", "💰", "🛵", "🏋️", "🎬", "🛍️", "🧴", "🐕"
-];
 
 interface PresetManagerModalProps {
   isOpen: boolean;
@@ -56,7 +53,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
   // Form State
   const [name, setName] = useState("");
   const [amount, setAmount] = useState<string>("");
-  const [icon, setIcon] = useState("🍱");
+  const [icon, setIcon] = useState("meal");
   const [category, setCategory] = useState<TransactionCategory>("Food");
   const [type, setType] = useState<"expense" | "income">("expense");
   const [accountId, setAccountId] = useState("");
@@ -68,7 +65,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
     setIsCreatingNew(true);
     setName("");
     setAmount("");
-    setIcon("🍱");
+    setIcon("meal");
     setCategory("Food");
     setType("expense");
     setAccountId("");
@@ -104,7 +101,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
         {
           name: name.trim(),
           amount: numAmount,
-          icon: icon || "⚡",
+          icon: icon || "note",
           category: type === "income" ? "Income" : category,
           type,
           ...(accountId ? { accountId } : {}),
@@ -119,7 +116,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
         ...(accountId ? { accountId } : {}),
         name: name.trim(),
         amount: numAmount,
-        icon: icon || "⚡",
+        icon: icon || "note",
         category: type === "income" ? "Income" : category,
         type,
       };
@@ -233,9 +230,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-surface)] border border-[var(--color-line)] text-lg shadow-xs">
-                            {preset.icon}
-                          </span>
+                          <PresetIcon icon={preset.icon} category={preset.category} className="h-9 w-9" />
                           <div className="min-w-0">
                             <div className="text-xs font-bold text-[var(--color-ink)] truncate">
                               {preset.name}
@@ -307,18 +302,20 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
                       {t("presetModal.iconLabel")}
                     </label>
                     <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1 rounded-xl bg-[var(--color-surface)] border border-[var(--color-line)]">
-                      {EMOJI_OPTIONS.map((em) => (
+                      {PICKER_ICON_KEYS.map((key) => (
                         <button
-                          key={em}
+                          key={key}
                           type="button"
-                          onClick={() => setIcon(em)}
-                          className={`flex h-8 w-8 items-center justify-center rounded-lg text-base transition ${
-                            icon === em
-                              ? "bg-[var(--primary)] text-white shadow-xs scale-110"
-                              : "hover:bg-[var(--color-surface-subtle)]"
+                          onClick={() => setIcon(key)}
+                          aria-label={key}
+                          aria-pressed={icon === key}
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
+                            icon === key
+                              ? "bg-[var(--primary)] text-[var(--primary-contrast)] shadow-xs scale-110"
+                              : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-subtle)]"
                           }`}
                         >
-                          {em}
+                          <AppIcon name={key} size={18} weight={icon === key ? "fill" : "duotone"} />
                         </button>
                       ))}
                     </div>

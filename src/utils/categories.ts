@@ -1,9 +1,10 @@
 import type { BudgetBucket, Transaction } from "../types";
+import { normalizeIconKey } from "../components/icons/registry";
 
 export type CategoryDef = {
   id: string;
   name?: string; // Custom categories only; built-ins are translated via `category.<id>`
-  icon: string; // Key of CATEGORY_ICON_KEYS
+  icon: string; // Icon key from components/icons/registry
   color: string;
   bucket: BudgetBucket | null; // null only for Income
   builtIn: boolean;
@@ -17,24 +18,18 @@ export const CATEGORY_PALETTE = [
   "#B05D58", "#2A8C8C", "#9A7048", "#4E9A47", "#A055A8", "#62808C", "#A88A1F",
 ] as const;
 
-export const CATEGORY_ICON_KEYS = [
-  "Coins", "ForkKnife", "Bus", "House", "Heartbeat", "BookOpen", "GameController", "CreditCard",
-  "PiggyBank", "ShoppingBag", "Coffee", "TShirt", "Gift", "PawPrint", "Baby", "Airplane",
-  "DeviceMobile", "Barbell", "FilmSlate", "Wrench", "Car", "Question", "Tag",
-] as const;
-
 export const BUILT_IN_CATEGORIES: CategoryDef[] = [
-  { id: "Income", icon: "Coins", color: "#3F8A6E", bucket: null, builtIn: true, hidden: false },
-  { id: "Food", icon: "ForkKnife", color: "#B5822F", bucket: "Needs", builtIn: true, hidden: false },
-  { id: "Transport", icon: "Bus", color: "#3F7DB5", bucket: "Needs", builtIn: true, hidden: false },
-  { id: "Home", icon: "House", color: "#6F8A45", bucket: "Needs", builtIn: true, hidden: false },
-  { id: "Health", icon: "Heartbeat", color: "#C0577F", bucket: "Needs", builtIn: true, hidden: false },
-  { id: "Learning", icon: "BookOpen", color: "#7466C2", bucket: "Wants", builtIn: true, hidden: false },
-  { id: "Fun", icon: "GameController", color: "#C96A2E", bucket: "Wants", builtIn: true, hidden: false },
-  { id: "Debt", icon: "CreditCard", color: "#B05D58", bucket: "Savings", builtIn: true, hidden: false },
-  { id: "Savings", icon: "PiggyBank", color: "#2A8C8C", bucket: "Savings", builtIn: true, hidden: false },
+  { id: "Income", icon: "coins", color: "#3F8A6E", bucket: null, builtIn: true, hidden: false },
+  { id: "Food", icon: "meal", color: "#B5822F", bucket: "Needs", builtIn: true, hidden: false },
+  { id: "Transport", icon: "transit", color: "#3F7DB5", bucket: "Needs", builtIn: true, hidden: false },
+  { id: "Home", icon: "home", color: "#6F8A45", bucket: "Needs", builtIn: true, hidden: false },
+  { id: "Health", icon: "health", color: "#C0577F", bucket: "Needs", builtIn: true, hidden: false },
+  { id: "Learning", icon: "learning", color: "#7466C2", bucket: "Wants", builtIn: true, hidden: false },
+  { id: "Fun", icon: "game", color: "#C96A2E", bucket: "Wants", builtIn: true, hidden: false },
+  { id: "Debt", icon: "card", color: "#B05D58", bucket: "Savings", builtIn: true, hidden: false },
+  { id: "Savings", icon: "savings", color: "#2A8C8C", bucket: "Savings", builtIn: true, hidden: false },
   // Filled in by balance checks, so it stays out of pickers unless the user shows it
-  { id: "Unaccounted", icon: "Question", color: "#62808C", bucket: "Wants", builtIn: true, hidden: true },
+  { id: "Unaccounted", icon: "question", color: "#62808C", bucket: "Wants", builtIn: true, hidden: true },
 ];
 
 // Income and Savings drive core metrics, so they cannot be hidden, re-bucketed or capped
@@ -54,7 +49,7 @@ function sanitizeCategory(value: unknown): CategoryDef | null {
   return {
     id: c.id,
     ...(typeof c.name === "string" && c.name.trim() ? { name: c.name.trim() } : {}),
-    icon: (CATEGORY_ICON_KEYS as readonly string[]).includes(c.icon) ? c.icon : "Tag",
+    icon: normalizeIconKey(c.icon), // also maps Phosphor names saved by older versions
     color: typeof c.color === "string" && /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : FALLBACK_COLOR,
     bucket: isBucket(c.bucket) ? c.bucket : "Wants",
     builtIn: false,
@@ -90,7 +85,7 @@ export function mergeWithBuiltIns(stored: unknown): CategoryDef[] {
 
 /** Looks a category up; unknown ids (e.g. from an old CSV) still render with a neutral style. */
 export function findCategory(list: CategoryDef[], id: string): CategoryDef {
-  return list.find((c) => c.id === id) ?? { id, name: id, icon: "Tag", color: FALLBACK_COLOR, bucket: "Wants", builtIn: false, hidden: false };
+  return list.find((c) => c.id === id) ?? { id, name: id, icon: "tag", color: FALLBACK_COLOR, bucket: "Wants", builtIn: false, hidden: false };
 }
 
 export function bucketForCategory(list: CategoryDef[], id: string): BudgetBucket {
@@ -115,7 +110,7 @@ export function createCustomCategory(name: string, bucket: BudgetBucket, list: C
   return {
     id: `cat-${crypto.randomUUID().slice(0, 8)}`,
     name: name.trim(),
-    icon: "Tag",
+    icon: "tag",
     color: nextCategoryColor(list),
     bucket,
     builtIn: false,

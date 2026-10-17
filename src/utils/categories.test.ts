@@ -33,7 +33,7 @@ describe("categories", () => {
       { id: "Fun", color: "#4E9A47", icon: "FilmSlate", bucket: "Needs", hidden: true, monthlyLimit: 2000 },
       { id: "cat-pet", name: "Pets", icon: "PawPrint", color: "#A055A8", bucket: "Needs", hidden: false },
     ]);
-    expect(findCategory(merged, "Fun")).toMatchObject({ builtIn: true, color: "#4E9A47", icon: "FilmSlate", bucket: "Needs", hidden: true, monthlyLimit: 2000 });
+    expect(findCategory(merged, "Fun")).toMatchObject({ builtIn: true, color: "#4E9A47", icon: "movie", bucket: "Needs", hidden: true, monthlyLimit: 2000 });
     expect(merged[merged.length - 1]).toMatchObject({ id: "cat-pet", name: "Pets", builtIn: false });
   });
 
@@ -45,7 +45,7 @@ describe("categories", () => {
 
   it("drops malformed stored entries and sanitizes fields", () => {
     const merged = mergeWithBuiltIns([null, { id: "" }, { id: "cat-x", name: "X", icon: "Nope", color: "red", bucket: "Other" }]);
-    expect(findCategory(merged, "cat-x")).toMatchObject({ icon: "Tag", color: "#62808C", bucket: "Wants" });
+    expect(findCategory(merged, "cat-x")).toMatchObject({ icon: "tag", color: "#62808C", bucket: "Wants" });
   });
 
   it("falls back to a neutral style and the Wants bucket for unknown ids", () => {

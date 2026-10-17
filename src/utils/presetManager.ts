@@ -1,10 +1,11 @@
 import type { AutocompleteItem, PresetItem, Transaction, TransactionCategory } from "../types";
 import { getSetting, saveSetting } from "../services/db";
+import { normalizeIconKey } from "../components/icons/registry";
 
 export const DEFAULT_PRESETS: PresetItem[] = [
   {
     id: "preset-coffee",
-    icon: "☕",
+    icon: "coffee",
     name: "กาแฟ",
     amount: 60,
     category: "Food",
@@ -13,7 +14,7 @@ export const DEFAULT_PRESETS: PresetItem[] = [
   },
   {
     id: "preset-lunch",
-    icon: "🍱",
+    icon: "meal",
     name: "ข้าวกลางวัน",
     amount: 70,
     category: "Food",
@@ -22,7 +23,7 @@ export const DEFAULT_PRESETS: PresetItem[] = [
   },
   {
     id: "preset-transit",
-    icon: "🚇",
+    icon: "transit",
     name: "เดินทาง BTS/MRT",
     amount: 45,
     category: "Transport",
@@ -31,7 +32,7 @@ export const DEFAULT_PRESETS: PresetItem[] = [
   },
   {
     id: "preset-7eleven",
-    icon: "🛒",
+    icon: "groceries",
     name: "7-Eleven",
     amount: 100,
     category: "Food",
@@ -40,7 +41,7 @@ export const DEFAULT_PRESETS: PresetItem[] = [
   },
   {
     id: "preset-fuel",
-    icon: "⛽",
+    icon: "fuel",
     name: "เติมน้ำมัน",
     amount: 500,
     category: "Transport",
@@ -49,7 +50,7 @@ export const DEFAULT_PRESETS: PresetItem[] = [
   },
   {
     id: "preset-milktea",
-    icon: "🥤",
+    icon: "drink",
     name: "ชานมไข่มุก",
     amount: 50,
     category: "Food",
@@ -59,27 +60,30 @@ export const DEFAULT_PRESETS: PresetItem[] = [
 ];
 
 export const CATEGORY_DEFAULT_ICONS: Record<string, string> = {
-  Food: "🍱",
-  Transport: "🚇",
-  Home: "🏠",
-  Health: "💊",
-  Learning: "📚",
-  Fun: "🎮",
-  Debt: "💳",
-  Savings: "💎",
-  Income: "💰",
+  Food: "meal",
+  Transport: "transit",
+  Home: "home",
+  Health: "health",
+  Learning: "learning",
+  Fun: "game",
+  Debt: "card",
+  Savings: "premium",
+  Income: "money",
 };
 
 /**
  * Load presets from persistent storage or return defaults
  */
 export async function getStoredPresets(): Promise<PresetItem[]> {
+  let presets: PresetItem[];
   try {
-    return await getSetting<PresetItem[]>("presets", DEFAULT_PRESETS);
+    presets = await getSetting<PresetItem[]>("presets", DEFAULT_PRESETS);
   } catch {
     const local = localStorage.getItem("levelup.presets");
-    return local ? JSON.parse(local) : DEFAULT_PRESETS;
+    presets = local ? JSON.parse(local) : DEFAULT_PRESETS;
   }
+  // Presets saved before icon keys held emoji; map them so the next save stores keys.
+  return presets.map((p) => ({ ...p, icon: normalizeIconKey(p.icon, "note") }));
 }
 
 /**
@@ -190,7 +194,7 @@ export function getSmartSuggestedPresets(
     .sort(([, a], [, b]) => b.count - a.count)
     .map(([key, item]) => ({
       id: `auto-history-${key.replace(/[^a-zA-Z0-9_\u0E00-\u0E7F-]/g, "_")}`,
-      icon: CATEGORY_DEFAULT_ICONS[item.category] || "⚡",
+      icon: CATEGORY_DEFAULT_ICONS[item.category] || "utilities",
       name: item.name,
       amount: item.amount,
       category: item.category,
@@ -290,7 +294,7 @@ export function getAutocompleteSuggestions(
         category: h.category,
         type: h.isIncome ? "income" : "expense",
         source: "history",
-        icon: CATEGORY_DEFAULT_ICONS[h.category] || "📝",
+        icon: CATEGORY_DEFAULT_ICONS[h.category] || "note",
         frequency: h.count,
       });
     }

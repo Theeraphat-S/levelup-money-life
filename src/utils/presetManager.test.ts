@@ -21,7 +21,7 @@ describe("presetManager", () => {
 
   it("adds a custom preset", () => {
     const newPreset: Omit<PresetItem, "id"> = {
-      icon: "🍿",
+      icon: "movie",
       name: "ตั๋วหนัง SF",
       amount: 240,
       category: "Fun",

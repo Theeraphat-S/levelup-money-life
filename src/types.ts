@@ -74,7 +74,7 @@ export type Transfer = {
 
 export type PresetItem = {
   id: string;
-  icon: string; // Emoji icon, e.g. "☕", "🍱", "🚇", "🛒"
+  icon: string; // Icon key from components/icons/registry, e.g. "coffee", "meal", "transit"
   name: string;
   amount: number; // Positive number for default value
   category: TransactionCategory;

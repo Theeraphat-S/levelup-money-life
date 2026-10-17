@@ -36,6 +36,7 @@ import {
   incrementPresetUsage,
 } from "../utils/presetManager";
 import { PresetManagerModal } from "./PresetManagerModal";
+import { PresetIcon } from "./common/PresetIcon";
 import { CategoryIcon } from "./common/CategoryIcon";
 
 const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
@@ -582,7 +583,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-base shrink-0">{item.icon || "📝"}</span>
+                        <PresetIcon icon={item.icon || "note"} category={item.category} size={14} className="h-6 w-6 rounded-lg" />
                         <span className="font-semibold truncate">{item.name}</span>
                         <span className="inline-flex items-center gap-1 text-xs text-[var(--color-ink-soft)] font-normal border border-[var(--color-line)] rounded px-1.5 py-0.2 bg-[var(--color-surface)]">
                           <CategoryIcon category={item.category} size={12} />
@@ -624,9 +625,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
             onClick={() => handleTapPreset(preset)}
             className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] hover:bg-[var(--color-surface)] hover:border-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-[var(--color-ink)] shadow-xs transition-all cursor-pointer group"
           >
-            <span className="text-sm group-hover:scale-110 transition-transform">
-              {preset.icon}
-            </span>
+            <PresetIcon icon={preset.icon} category={preset.category} size={14} className="h-6 w-6 rounded-lg group-hover:scale-110 transition-transform" />
             <span className="truncate">{preset.name}</span>
             <span className="font-mono text-xs font-bold text-[var(--color-ink-soft)] group-hover:text-[var(--primary-ink)]">
               ฿{preset.amount}

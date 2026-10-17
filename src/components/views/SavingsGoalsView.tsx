@@ -23,6 +23,7 @@ import {
   X,
 } from "../icons";
 import { useTranslation } from "react-i18next";
+import { AppIcon, SAVINGS_GOAL_ICON_KEYS, normalizeIconKey } from "../icons/registry";
 import { BentoCard } from "../common/BentoCard";
 import { TactileButton } from "../common/TactileButton";
 import { AnimatedCounter } from "../common/AnimatedCounter";
@@ -37,17 +38,6 @@ import {
 } from "../../utils/savingsGoals";
 
 const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
-
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  ShieldCheck: <ShieldCheck size={20} weight="fill" />,
-  AirplaneTilt: <AirplaneTilt size={20} weight="fill" />,
-  Laptop: <Laptop size={20} weight="fill" />,
-  House: <House size={20} weight="fill" />,
-  Car: <Car size={20} weight="fill" />,
-  Gift: <Gift size={20} weight="fill" />,
-  GraduationCap: <GraduationCap size={20} weight="fill" />,
-  PiggyBank: <PiggyBank size={20} weight="fill" />,
-};
 
 interface SavingsGoalsViewProps {
   goals: SavingsGoal[];
@@ -117,7 +107,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
   const [formCategory, setFormCategory] = useState<SavingsGoalCategory>("emergency");
   const [formTargetAmount, setFormTargetAmount] = useState<number>(50000);
   const [formTargetDate, setFormTargetDate] = useState<string>("");
-  const [formIcon, setFormIcon] = useState<string>("ShieldCheck");
+  const [formIcon, setFormIcon] = useState<string>("shield");
   const [formAccountId, setFormAccountId] = useState<string>("");
 
   // Calculate monthly required pace across all active goals
@@ -170,7 +160,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
     setFormCategory(goal.category);
     setFormTargetAmount(goal.targetAmount);
     setFormTargetDate(goal.targetDate || "");
-    setFormIcon(goal.icon || "PiggyBank");
+    setFormIcon(normalizeIconKey(goal.icon, "savings"));
     setFormAccountId(goal.accountId ?? "");
     setIsGoalModalOpen(true);
   };
@@ -394,7 +384,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                         color: goal.color || "var(--jade-ink)",
                       }}
                     >
-                      {CATEGORY_ICONS[goal.icon] || <PiggyBank size={22} weight="fill" />}
+                      <AppIcon name={goal.icon} fallback="savings" size={22} weight="fill" />
                     </div>
 
                     <div>
@@ -813,14 +803,9 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                       onChange={(e) => setFormIcon(e.target.value)}
                       className="w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3 py-2 text-xs text-[var(--color-ink)] focus:outline-hidden"
                     >
-                      <option value="ShieldCheck">{t("savings.icons.ShieldCheck")}</option>
-                      <option value="AirplaneTilt">{t("savings.icons.AirplaneTilt")}</option>
-                      <option value="Laptop">{t("savings.icons.Laptop")}</option>
-                      <option value="House">{t("savings.icons.House")}</option>
-                      <option value="Car">{t("savings.icons.Car")}</option>
-                      <option value="Gift">{t("savings.icons.Gift")}</option>
-                      <option value="GraduationCap">{t("savings.icons.GraduationCap")}</option>
-                      <option value="PiggyBank">{t("savings.icons.PiggyBank")}</option>
+                      {SAVINGS_GOAL_ICON_KEYS.map((key) => (
+                        <option key={key} value={key}>{t(`savings.icons.${key}`)}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
