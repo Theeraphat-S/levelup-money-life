@@ -16,7 +16,9 @@ import { BentoCard } from "../common/BentoCard";
 import { TactileButton } from "../common/TactileButton";
 import { AnimatedCounter } from "../common/AnimatedCounter";
 import { FloatingReward, type FloatingRewardItem } from "../common/FloatingReward";
-import type { Achievement, GamificationState, Quest } from "../../types";
+import type { Account, Achievement, GamificationState, Quest, Transaction } from "../../types";
+import { MoneyHabitQuests } from "../MoneyHabitQuests";
+import { displayQuestTitle } from "../../utils/questTitle";
 
 interface QuestsGrowthProps {
   quests: Quest[];
@@ -24,6 +26,8 @@ interface QuestsGrowthProps {
   gamification: GamificationState;
   achievements: Achievement[];
   onToggleQuest: (id: string) => void;
+  accounts?: Account[];
+  transactions?: Transaction[];
 }
 
 const RANKS = [
@@ -41,6 +45,8 @@ export const QuestsGrowth: React.FC<QuestsGrowthProps> = ({
   gamification,
   achievements,
   onToggleQuest,
+  accounts = [],
+  transactions = [],
 }) => {
   const { t } = useTranslation();
   const today = new Date().toISOString().slice(0, 10);
@@ -225,7 +231,7 @@ export const QuestsGrowth: React.FC<QuestsGrowthProps> = ({
               type="text"
               autoFocus
               required
-              placeholder="e.g. Save 100 THB into piggy bank"
+              placeholder={t("quests.placeholder")}
               value={newQuestTitle}
               onChange={(e) => setNewQuestTitle(e.target.value)}
               className="flex-1 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-ink)] outline-none focus:border-[var(--primary)] shadow-xs"
@@ -234,17 +240,21 @@ export const QuestsGrowth: React.FC<QuestsGrowthProps> = ({
               type="submit"
               className="rounded-xl bg-[#1C5954] text-[#FEFFFC] dark:bg-[#76AA9D] dark:text-[#071B1A] px-3.5 py-2 text-xs font-bold shadow-xs hover:opacity-90"
             >
-              Save Quest
+              {t("quests.save")}
             </TactileButton>
             <button
               type="button"
               onClick={() => setIsAdding(false)}
               className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-subtle)] cursor-pointer"
             >
-              Cancel
+              {t("quests.cancel")}
             </button>
           </form>
         )}
+
+        <div className="mb-5">
+          <MoneyHabitQuests accounts={accounts} transactions={transactions} />
+        </div>
 
         <div className="space-y-2.5">
           {quests.map((quest) => (
@@ -272,7 +282,7 @@ export const QuestsGrowth: React.FC<QuestsGrowthProps> = ({
                       quest.done ? "line-through text-[var(--color-ink-soft)] opacity-70" : "text-[var(--color-ink)]"
                     }`}
                   >
-                    {quest.title}
+                    {displayQuestTitle(quest, t)}
                   </span>
                   <span className="font-mono text-xs text-[var(--color-ink-soft)]">
                     {quest.date}

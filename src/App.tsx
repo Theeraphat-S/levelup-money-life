@@ -73,6 +73,7 @@ import type { BackupData } from "./services/exportImport";
 import type { Account, RecurringBill, RecurringBillPayment, Transaction, Transfer, ViewTab } from "./types";
 import { recordBillPayment } from "./utils/recurringBills";
 import { getCardBills } from "./utils/cardBills";
+import { dueSystemAwards, type SystemQuestAwards } from "./utils/systemQuests";
 import {
   BUILT_IN_CATEGORIES,
   computeCategoryBudgets,
@@ -114,6 +115,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [desktopSettings, setDesktopSettings] = useState<DesktopSettings>(DEFAULT_DESKTOP_SETTINGS);
   const lastReminderRef = useRef<string | null>(null);
+  const systemAwardsRef = useRef<SystemQuestAwards | null>(null);
   const [categories, setCategories] = useState<CategoryDef[]>(BUILT_IN_CATEGORIES);
   const [recurringBills, setRecurringBills] = useState<RecurringBill[]>([]);
 
@@ -286,6 +288,17 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, [loading, t]);
 
+  // Data-driven quests: reward a weekly balance check and a month that ended within every limit
+  useEffect(() => {
+    if (loading || !systemAwardsRef.current) return;
+    const { awards, next } = dueSystemAwards(systemAwardsRef.current, accounts, categories, transactions, getLocalTodayISO());
+    if (awards.length === 0) return;
+    systemAwardsRef.current = next;
+    void saveSetting("systemQuestAwards", next);
+    awards.forEach((award) => addXp(award.xp));
+    showToast(awards.map((award) => t(`quests.system.award.${award.id}`, { xp: award.xp, period: award.period })).join(" · "), 5000);
+  }, [loading, accounts, categories, transactions, addXp, showToast, t]);
+
   const categoryInUse = (categoryId: string) => isCategoryUsed(categoryId, transactions, [...presets, ...recurringBills]);
 
   // Warn once when a category limit for the current month reaches 80% or 100%
@@ -381,6 +394,7 @@ export default function App() {
         const savedDesktop = sanitizeDesktopSettings(await getSetting<unknown>("desktop", null));
         setDesktopSettings(savedDesktop);
         lastReminderRef.current = await getSetting<string | null>("lastReminderDate", null);
+        systemAwardsRef.current = await getSetting<SystemQuestAwards>("systemQuestAwards", {});
         void setCloseToTray(savedDesktop.closeToTray).catch((err) => console.error("Tray setting failed:", err));
         setShowSetup(!setupComplete && txs.length === 0);
 
@@ -740,6 +754,8 @@ export default function App() {
                 setQuests={setQuests}
                 gamification={gamification}
                 achievements={allAchievements}
+                accounts={accounts}
+                transactions={transactions}
                 onToggleQuest={(id) => toggleQuest(id, addXp)}
               />
             </motion.div>

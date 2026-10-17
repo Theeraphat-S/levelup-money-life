@@ -404,6 +404,30 @@ const resources = {
         unlockedCount: "{{unlocked}} / {{total}} Unlocked",
         locked: "Locked",
         unlockedAt: "Unlocked {{date}}",
+        placeholder: "e.g. Put 100 THB into the piggy bank",
+        save: "Save quest",
+        cancel: "Cancel",
+        defaults: {
+          q1: "Log every expense today",
+          q2: "Review this month's 50/30/20 budget",
+          q3: "Transfer 500 THB to emergency savings",
+        },
+        system: {
+          title: "Money habits",
+          subtitle: "Checked against your real data — they complete on their own.",
+          completed: "Completed",
+          weeklyTitle: "Check a real balance this week",
+          weeklyDone: "Done for this week",
+          weeklyTodo: "Compare any account with its real balance before Sunday",
+          limitsTitle: "Finish the month with no category over its limit",
+          limitsNone: "Set a monthly limit on a category to start",
+          limitsOver: "{{count}} category(ies) already over the limit this month",
+          limitsOnTrack: "On track · {{days}} day(s) left",
+          award: {
+            weeklyCheck: "Weekly balance check +{{xp}} XP",
+            monthLimits: "{{period}} finished within every limit +{{xp}} XP",
+          },
+        },
       },
       achievements: {
         first_log: {
@@ -1232,6 +1256,30 @@ const resources = {
         unlockedCount: "ปลดล็อกแล้ว {{unlocked}} / {{total}} รายการ",
         locked: "ยังไม่ปลดล็อก",
         unlockedAt: "ปลดล็อกเมื่อ {{date}}",
+        placeholder: "เช่น หยอดกระปุก 100 บาท",
+        save: "บันทึกเควสต์",
+        cancel: "ยกเลิก",
+        defaults: {
+          q1: "จดรายจ่ายทุกรายการวันนี้",
+          q2: "ทบทวนงบ 50/30/20 ของเดือนนี้",
+          q3: "โอน 500 บาทเข้าเงินสำรองฉุกเฉิน",
+        },
+        system: {
+          title: "นิสัยการเงิน",
+          subtitle: "ตรวจจากข้อมูลจริงของคุณ สำเร็จได้เองโดยไม่ต้องกดติ๊ก",
+          completed: "สำเร็จแล้ว",
+          weeklyTitle: "เช็กยอดจริงสัปดาห์นี้",
+          weeklyDone: "ทำแล้วสำหรับสัปดาห์นี้",
+          weeklyTodo: "เทียบยอดบัญชีใดก็ได้กับยอดจริงก่อนวันอาทิตย์",
+          limitsTitle: "จบเดือนโดยไม่มีหมวดไหนเกินงบ",
+          limitsNone: "ตั้งงบรายเดือนให้หมวดใดหมวดหนึ่งก่อนเริ่ม",
+          limitsOver: "เดือนนี้มี {{count}} หมวดที่เกินงบแล้ว",
+          limitsOnTrack: "ยังอยู่ในงบ · เหลืออีก {{days}} วัน",
+          award: {
+            weeklyCheck: "เช็กยอดประจำสัปดาห์ +{{xp}} XP",
+            monthLimits: "เดือน {{period}} อยู่ในงบทุกหมวด +{{xp}} XP",
+          },
+        },
       },
       achievements: {
         first_log: {

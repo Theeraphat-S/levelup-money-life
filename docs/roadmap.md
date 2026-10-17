@@ -39,8 +39,14 @@ Order: finance features → UX polish → game layer.
   - Also done: hard-coded English strings translated, `{{amount}}` labels fixed, Tools menu portalled so it stays on screen at phone width. Checked at 375 / 768 / 1280 px with no horizontal scroll.
   - Left for Phase 6: default quest titles are stored as English data.
 
-## Phase 6 — Quests
+## Phase 6 — Quests ✅
 - New quests: weekly balance check; finish the month with no category over budget. Nothing else in the game layer changes.
+  - Both are judged from data (`utils/systemQuests.ts`) and rewarded once per ISO week / month (`systemQuestAwards` setting). Limits are not versioned, so the monthly reward needs spending in at least one limited category that month.
+
+## Follow-ups noticed along the way
+- Daily quests never reset: `q1` stays done after the first day because nothing clears `done` when the date changes.
+- Achievements subtitle and a few achievement descriptions are still English in the Thai UI.
+- Tray menu labels are English only.
 
 ## Out of scope
 Batch slip import (already exists), sub-categories, budget rollover, sync, mobile app.

@@ -22,6 +22,8 @@ import { TactileButton } from "../common/TactileButton";
 import { FloatingReward, type FloatingRewardItem } from "../common/FloatingReward";
 import { AccountBalancesCard } from "../AccountBalancesCard";
 import { DashboardTodo, type BucketOverage } from "../DashboardTodo";
+import { MoneyHabitQuests } from "../MoneyHabitQuests";
+import { displayQuestTitle } from "../../utils/questTitle";
 import { CategoryIcon } from "../common/CategoryIcon";
 import type { CardBillOccurrence } from "../../utils/cardBills";
 import { calculateDailySafeToSpend, getLocalTodayISO } from "../../utils/safeToSpend";
@@ -369,7 +371,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         quest.done ? "line-through text-[var(--color-ink-soft)] opacity-70" : "text-[var(--color-ink)]"
                       }`}
                     >
-                      {quest.title}
+                      {displayQuestTitle(quest, t)}
                     </div>
                     <div className="font-mono text-xs text-[var(--color-ink-soft)]">
                       {quest.date}
@@ -387,6 +389,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 {t("quests.empty")}
               </div>
             )}
+          </div>
+
+          <div className="mt-3">
+            <MoneyHabitQuests accounts={accounts} transactions={transactions} compact />
           </div>
 
           <div className="mt-4 pt-3 border-t border-[var(--color-line)] flex items-center justify-between">
