@@ -13,6 +13,7 @@ import {
   Trash,
   X,
   Archive,
+  Scales,
   ArrowCounterClockwise,
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
@@ -30,6 +31,7 @@ import {
 } from "../utils/accounts";
 import { CustomSelect } from "./common/CustomSelect";
 import { CustomDatePicker } from "./common/CustomDatePicker";
+import { BalanceCheckPanel } from "./BalanceCheckPanel";
 
 export const ACCOUNT_TYPE_ICONS: Record<AccountType, typeof Bank> = {
   cash: Money,
@@ -54,6 +56,7 @@ interface AccountManagerModalProps {
   onSetDefault: (id: string) => void;
   onAddTransfer: (transfer: Transfer) => void;
   onDeleteTransfer: (id: string) => void;
+  onApplyBalanceCheck?: (account: Account, transactions: Transaction[]) => void;
 }
 
 type AccountDraft = {
@@ -93,6 +96,7 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({
   onSetDefault,
   onAddTransfer,
   onDeleteTransfer,
+  onApplyBalanceCheck,
 }) => {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -110,10 +114,12 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({
   const [transferDate, setTransferDate] = useState(getLocalTodayISO());
   const [transferNote, setTransferNote] = useState("");
   const [transferError, setTransferError] = useState("");
+  const [checkId, setCheckId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setDraft(null);
+    setCheckId(null);
     setFormError("");
     setTransferError("");
     setTransferAmount("");
@@ -324,7 +330,7 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({
                     )}
                     <button
                       type="button"
-                      onClick={() => { setFormError(""); setDraft({ ...EMPTY_DRAFT }); }}
+                      onClick={() => { setFormError(""); setCheckId(null); setDraft({ ...EMPTY_DRAFT }); }}
                       className="inline-flex items-center gap-1 rounded-lg bg-[var(--primary)] text-[var(--primary-contrast)] px-2.5 py-1 text-xs font-semibold shadow-xs hover:opacity-90 transition"
                     >
                       <Plus size={14} weight="bold" />
@@ -370,6 +376,7 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({
                             <div className="text-xs text-[var(--color-ink-soft)]">
                               {t(`accounts.types.${account.type}`)}
                               {account.alias && <span className="font-mono"> · @{account.alias}</span>}
+                              {account.lastBalanceCheck && <span> · {t("accounts.lastChecked", { date: account.lastBalanceCheck })}</span>}
                             </div>
                           </div>
                         </div>
@@ -388,6 +395,17 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({
                             </div>
                           </div>
                           <div className="flex items-center gap-0.5">
+                            {!account.archived && onApplyBalanceCheck && (
+                              <button
+                                type="button"
+                                onClick={() => { setDraft(null); setCheckId(account.id); }}
+                                title={t("accounts.check")}
+                                aria-label={`${t("accounts.check")}: ${account.name}`}
+                                className="rounded-lg p-1.5 text-[var(--color-ink-soft)] hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] transition"
+                              >
+                                <Scales size={15} />
+                              </button>
+                            )}
                             {!account.archived && !isDefault && (
                               <button
                                 type="button"
@@ -442,6 +460,17 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({
                   <p role="alert" className="mt-2 text-xs font-semibold text-[var(--rose-ink)]">{formError}</p>
                 )}
               </section>
+
+              {/* Balance check */}
+              {checkId && onApplyBalanceCheck && accounts.some((a) => a.id === checkId) && (
+                <BalanceCheckPanel
+                  key={checkId}
+                  account={accounts.find((a) => a.id === checkId) as Account}
+                  recordedBalance={balances[checkId] ?? 0}
+                  onApply={(account, txs) => { onApplyBalanceCheck(account, txs); setCheckId(null); }}
+                  onCancel={() => setCheckId(null)}
+                />
+              )}
 
               {/* Add / edit form */}
               {draft && (

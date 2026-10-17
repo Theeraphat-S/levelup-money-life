@@ -58,7 +58,7 @@ export const DEFAULT_PRESETS: PresetItem[] = [
   },
 ];
 
-export const CATEGORY_DEFAULT_ICONS: Record<TransactionCategory, string> = {
+export const CATEGORY_DEFAULT_ICONS: Record<string, string> = {
   Food: "🍱",
   Transport: "🚇",
   Home: "🏠",

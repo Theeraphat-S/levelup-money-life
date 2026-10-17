@@ -25,6 +25,8 @@ import { useTranslation } from "react-i18next";
 import { useCategories } from "../../hooks/useCategories";
 import { BentoCard } from "../common/BentoCard";
 import { MetricTile } from "../common/MetricTile";
+import { CategoryIcon } from "../common/CategoryIcon";
+import { UNACCOUNTED_CATEGORY, unaccountedTotal } from "../../utils/balanceCheck";
 import {
   CHART_PALETTE,
   type Transaction,
@@ -61,6 +63,7 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
   const burnRate = Math.round(expenses / (daysInMonth || 30));
   const netSaved = monthRows.filter(row => row.category === "Savings").reduce((sum, row) => sum - row.amount, 0);
   const savingsRate = income > 0 ? Math.round(netSaved / income * 100) : 0;
+  const unaccounted = unaccountedTotal(transactions, activeMonth);
 
   // Category breakdown
   const categoryTotals: Record<string, number> = {};
@@ -143,6 +146,20 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
           tone="neutral"
         />
       </div>
+
+      {/* Money that balance checks could not trace, kept apart from known spending */}
+      {unaccounted > 0 && (
+        <div role="note" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3">
+          <span className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
+            <CategoryIcon category={UNACCOUNTED_CATEGORY} size={18} />
+            {t("analytics.unaccountedTitle")}
+          </span>
+          <span className="text-xs text-[var(--color-ink-soft)]">
+            <span className="font-mono text-sm font-bold text-[var(--color-ink)]">฿{thb.format(unaccounted)}</span>
+            {expenses > 0 && ` · ${t("analytics.unaccountedShare", { percent: Math.round((unaccounted / expenses) * 100) })}`}
+          </span>
+        </div>
+      )}
 
       {/* Smart Financial Insights Tile */}
       {insights.length > 0 && (

@@ -7,6 +7,8 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    // Cargo writes build artifacts here; watching them crashes the dev server on Windows (EBUSY)
+    watch: { ignored: ["**/src-tauri/**"] },
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {

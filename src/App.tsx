@@ -14,6 +14,15 @@ import { SlipScanModal } from "./components/SlipScanModal";
 import { DataManagerModal } from "./components/DataManagerModal";
 import { AccountManagerModal } from "./components/AccountManagerModal";
 import { CategoryManagerModal } from "./components/CategoryManagerModal";
+import { SettingsModal } from "./components/SettingsModal";
+import { isDesktopApp, sendDesktopNotification, setCloseToTray, setLaunchAtLogin } from "./services/desktop";
+import {
+  DEFAULT_DESKTOP_SETTINGS,
+  reminderDateKey,
+  sanitizeDesktopSettings,
+  shouldSendReminder,
+  type DesktopSettings,
+} from "./utils/reminders";
 import { CategoriesContext } from "./hooks/useCategories";
 import { LevelUpCelebration } from "./components/LevelUpCelebration";
 
@@ -102,6 +111,9 @@ export default function App() {
   const [isDataManagerOpen, setIsDataManagerOpen] = useState<boolean>(false);
   const [isAccountsOpen, setIsAccountsOpen] = useState<boolean>(false);
   const [isCategoriesOpen, setIsCategoriesOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [desktopSettings, setDesktopSettings] = useState<DesktopSettings>(DEFAULT_DESKTOP_SETTINGS);
+  const lastReminderRef = useRef<string | null>(null);
   const [categories, setCategories] = useState<CategoryDef[]>(BUILT_IN_CATEGORIES);
   const [recurringBills, setRecurringBills] = useState<RecurringBill[]>([]);
 
@@ -241,6 +253,39 @@ export default function App() {
     }));
   };
 
+  // Balance check: add the adjusting entries and remember when this account was last verified
+  const handleApplyBalanceCheck = (account: Account, adjustments: Transaction[]) => {
+    if (adjustments.length > 0) setTransactions((prev) => [...adjustments, ...prev]);
+    saveAccount({ ...account, lastBalanceCheck: getLocalTodayISO() });
+    showToast(adjustments.length > 0 ? t("accounts.checkSaved", { count: adjustments.length }) : t("accounts.checkMatched"));
+  };
+
+  const handleDesktopSettings = (next: DesktopSettings) => {
+    if (next.closeToTray !== desktopSettings.closeToTray) void setCloseToTray(next.closeToTray).catch(console.error);
+    if (next.launchAtLogin !== desktopSettings.launchAtLogin) void setLaunchAtLogin(next.launchAtLogin).catch(console.error);
+    setDesktopSettings(next);
+    void saveSetting("desktop", next);
+  };
+
+  // Evening reminder: checked every minute while the app runs (including hidden in the tray)
+  const reminderStateRef = useRef({ settings: desktopSettings, transactions });
+  reminderStateRef.current = { settings: desktopSettings, transactions };
+  useEffect(() => {
+    if (loading || !isDesktopApp()) return;
+    const check = () => {
+      const now = new Date();
+      const { settings, transactions: current } = reminderStateRef.current;
+      if (!shouldSendReminder(now, settings, current, lastReminderRef.current)) return;
+      const today = reminderDateKey(now);
+      lastReminderRef.current = today;
+      void saveSetting("lastReminderDate", today);
+      void sendDesktopNotification(t("reminder.title"), t("reminder.body")).catch(console.error);
+    };
+    check();
+    const timer = window.setInterval(check, 60_000);
+    return () => window.clearInterval(timer);
+  }, [loading, t]);
+
   const categoryInUse = (categoryId: string) => isCategoryUsed(categoryId, transactions, [...presets, ...recurringBills]);
 
   // Warn once when a category limit for the current month reaches 80% or 100%
@@ -333,6 +378,10 @@ export default function App() {
         }
         initAccounts(loadedAccounts, loadedTransfers, savedDefaultAccount);
         setCategories(mergeWithBuiltIns(await getSetting<CategoryDef[]>("categories", [])));
+        const savedDesktop = sanitizeDesktopSettings(await getSetting<unknown>("desktop", null));
+        setDesktopSettings(savedDesktop);
+        lastReminderRef.current = await getSetting<string | null>("lastReminderDate", null);
+        void setCloseToTray(savedDesktop.closeToTray).catch((err) => console.error("Tray setting failed:", err));
         setShowSetup(!setupComplete && txs.length === 0);
 
         initTransactions(txs, savedPresets);
@@ -549,6 +598,7 @@ export default function App() {
           onOpenScanSlip={() => openSlipScan([])}
           onOpenDataManager={() => setIsDataManagerOpen(true)}
           onOpenAccounts={() => setIsAccountsOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
           themeMode={themeMode}
           setThemeMode={setThemeMode}
         />
@@ -742,6 +792,15 @@ export default function App() {
           onResetData={handleResetData}
         />
 
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          settings={desktopSettings}
+          onChange={handleDesktopSettings}
+          isDesktop={isDesktopApp()}
+          onTestNotification={() => sendDesktopNotification(t("reminder.title"), t("reminder.body")).catch(() => false)}
+        />
+
         <CategoryManagerModal
           isOpen={isCategoriesOpen}
           onClose={() => setIsCategoriesOpen(false)}
@@ -762,6 +821,7 @@ export default function App() {
           onSetDefault={setDefaultAccountId}
           onAddTransfer={(transfer) => { addTransfer(transfer); showToast(t("accounts.transferSaved")); }}
           onDeleteTransfer={deleteTransfer}
+          onApplyBalanceCheck={handleApplyBalanceCheck}
         />
 
         <LevelUpCelebration

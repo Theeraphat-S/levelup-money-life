@@ -8,6 +8,7 @@ export const TRANSACTION_CATEGORIES = [
   "Fun",
   "Debt",
   "Savings",
+  "Unaccounted", // Shortfalls found by a balance check
 ] as const;
 
 // Built-in category ids. Users can add more, so a category is any string id (see utils/categories).
@@ -56,6 +57,7 @@ export type Account = {
   alias?: string; // Short handle for quick input, e.g. "kb"
   statementDay?: number; // Credit cards: day the statement is cut (1-31)
   dueDay?: number; // Credit cards: day payment is due (1-31)
+  lastBalanceCheck?: string; // Date the real balance was last compared (YYYY-MM-DD)
   archived: boolean;
   createdAt: string;
 };

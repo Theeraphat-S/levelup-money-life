@@ -20,7 +20,7 @@ export const CATEGORY_PALETTE = [
 export const CATEGORY_ICON_KEYS = [
   "Coins", "ForkKnife", "Bus", "House", "Heartbeat", "BookOpen", "GameController", "CreditCard",
   "PiggyBank", "ShoppingBag", "Coffee", "TShirt", "Gift", "PawPrint", "Baby", "Airplane",
-  "DeviceMobile", "Barbell", "FilmSlate", "Wrench", "Car", "Tag",
+  "DeviceMobile", "Barbell", "FilmSlate", "Wrench", "Car", "Question", "Tag",
 ] as const;
 
 export const BUILT_IN_CATEGORIES: CategoryDef[] = [
@@ -33,6 +33,8 @@ export const BUILT_IN_CATEGORIES: CategoryDef[] = [
   { id: "Fun", icon: "GameController", color: "#C96A2E", bucket: "Wants", builtIn: true, hidden: false },
   { id: "Debt", icon: "CreditCard", color: "#B05D58", bucket: "Savings", builtIn: true, hidden: false },
   { id: "Savings", icon: "PiggyBank", color: "#2A8C8C", bucket: "Savings", builtIn: true, hidden: false },
+  // Filled in by balance checks, so it stays out of pickers unless the user shows it
+  { id: "Unaccounted", icon: "Question", color: "#62808C", bucket: "Wants", builtIn: true, hidden: true },
 ];
 
 // Income and Savings drive core metrics, so they cannot be hidden, re-bucketed or capped

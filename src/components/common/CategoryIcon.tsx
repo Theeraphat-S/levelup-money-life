@@ -18,6 +18,7 @@ import {
   House,
   PawPrint,
   PiggyBank,
+  Question,
   ShoppingBag,
   TShirt,
   Tag,
@@ -28,7 +29,7 @@ import { useCategories } from "../../hooks/useCategories";
 
 export const CATEGORY_ICONS: Record<string, React.ComponentType<IconProps>> = {
   Airplane, Baby, Barbell, BookOpen, Bus, Car, Coffee, Coins, CreditCard, DeviceMobile, FilmSlate,
-  ForkKnife, GameController, Gift, Heartbeat, House, PawPrint, PiggyBank, ShoppingBag, TShirt, Tag, Wrench,
+  ForkKnife, GameController, Gift, Heartbeat, House, PawPrint, PiggyBank, Question, ShoppingBag, TShirt, Tag, Wrench,
 };
 
 /** The category's icon in its colour, so categories are never told apart by colour alone. */

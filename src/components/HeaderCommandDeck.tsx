@@ -6,6 +6,7 @@ import {
   CaretRight,
   Database,
   Wallet,
+  GearSix,
   Desktop,
   Flame,
   Moon,
@@ -29,6 +30,7 @@ interface HeaderCommandDeckProps {
   onOpenScanSlip: () => void;
   onOpenDataManager: () => void;
   onOpenAccounts: () => void;
+  onOpenSettings: () => void;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
 }
@@ -43,6 +45,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
   onOpenScanSlip,
   onOpenDataManager,
   onOpenAccounts,
+  onOpenSettings,
   themeMode,
   setThemeMode,
 }) => {
@@ -242,6 +245,17 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
               </button>
             ))}
           </div>
+
+          {/* Settings Trigger */}
+          <TactileButton
+            type="button"
+            onClick={onOpenSettings}
+            title={t("settings.title")}
+            aria-label={t("settings.title")}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface)] shadow-xs"
+          >
+            <GearSix size={15} weight="duotone" />
+          </TactileButton>
 
           {/* Accounts Trigger */}
           <TactileButton

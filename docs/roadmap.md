@@ -27,9 +27,10 @@ Order: finance features → UX polish → game layer.
   - Built-in ids stay the same ("Food", "Income", …), so stored data needed no migration. Categories live in the `categories` setting and reach components through `CategoriesContext` (`useCategories`).
 - Found while testing, for Phase 5: hard-coded English in Budget ("Allocation Slider", "% of budget") and an uninterpolated `{{amount}}` in the Dashboard's Safe-to-Spend breakdown.
 
-## Phase 4 — Balance check & reminders
+## Phase 4 — Balance check & reminders ✅
 - Enter the real balance of an account; the app shows the difference. A shortfall is recorded in a system "Unaccounted" category (shown separately in Analytics); a surplus is recorded as an "Adjustment" income. Differences can be split into several entries.
 - Close-to-tray, optional launch at login (off by default), and an evening reminder (default 20:00) only on days with nothing logged. Needs `tauri-plugin-notification` and a tray.
+  - The reminder runs as a once-a-minute check in the webview, so it needs the app running (window open or hidden in the tray). Tray menu labels are English for now.
 
 ## Phase 5 — UX polish
 - Move Tax Planner into a Tools menu (6 main tabs). No Accounts tab: balances strip on Dashboard, account filter in Ledger, account management in a modal.
