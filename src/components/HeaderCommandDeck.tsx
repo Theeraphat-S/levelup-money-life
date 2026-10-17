@@ -1,5 +1,6 @@
 import React from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
+import { SPRING, DURATION, easeOut } from "../constants/motion";
 import {
   CaretLeft,
   CaretRight,
@@ -139,10 +140,10 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
             </div>
             <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-[var(--color-line)]">
               <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-[#4D8E75] to-[#1C5954] dark:from-[#8BB999] dark:to-[#76AA9D] shadow-xs"
-                initial={shouldReduceMotion ? { width: `${levelProgressPct}%` } : { width: 0 }}
-                animate={{ width: `${levelProgressPct}%` }}
-                transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                className="h-full w-full origin-left rounded-full bg-gradient-to-r from-[#4D8E75] to-[#1C5954] dark:from-[#8BB999] dark:to-[#76AA9D] shadow-xs"
+                initial={shouldReduceMotion ? { scaleX: levelProgressPct / 100 } : { scaleX: 0 }}
+                animate={{ scaleX: levelProgressPct / 100 }}
+                transition={shouldReduceMotion ? { duration: 0 } : easeOut(DURATION.focal)}
               />
             </div>
           </button>
@@ -212,7 +213,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
                     <motion.div
                       layoutId="themePillIndicator"
                       className="absolute inset-0 rounded-lg bg-[var(--color-surface)] shadow-xs border border-[var(--color-line)]"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      transition={SPRING.state}
                     />
                   )}
                   <span className="relative z-10">{opt.icon}</span>

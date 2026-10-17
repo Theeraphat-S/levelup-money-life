@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
+import { SPRING } from "../constants/motion";
 import { ArrowUUpLeft, CheckCircle, Sparkle, X } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { Transaction } from "../types";
@@ -65,7 +66,7 @@ export const UndoToast: React.FC<UndoToastProps> = ({
           initial={{ opacity: 0, y: 25, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 450, damping: 28 }}
+          transition={SPRING.overlay}
           className="fixed bottom-6 right-6 z-50 overflow-hidden rounded-2xl border border-[var(--primary)]/30 bg-[var(--color-surface)] shadow-2xl backdrop-blur-md max-w-md w-full sm:w-auto"
         >
           {/* Top 1px highlight */}

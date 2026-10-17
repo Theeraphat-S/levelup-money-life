@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
+import { SPRING } from "../constants/motion";
 import {
   ArrowDown,
   ArrowUp,
@@ -157,7 +158,7 @@ export const DataManagerModal: React.FC<DataManagerModalProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
-            transition={{ type: "spring", stiffness: 350, damping: 28 }}
+            transition={SPRING.overlay}
             className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-2xl z-10"
           >
             {/* 1px Inner Liquid Glass Highlight */}

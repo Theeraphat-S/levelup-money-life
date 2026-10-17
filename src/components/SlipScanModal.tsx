@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
+import { SPRING, DURATION, easeOut } from "../constants/motion";
 import {
   ArrowCounterClockwise,
   ArrowRight,
@@ -430,7 +431,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ type: "spring", stiffness: 350, damping: 28 }}
+            transition={SPRING.overlay}
             className="relative w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-2xl z-10 flex flex-col my-auto"
           >
             {/* 1px Liquid Glass Highlight at top edge */}
@@ -745,10 +746,10 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                               {/* Progress bar */}
                               <div className="w-full max-w-[180px] h-1.5 rounded-full bg-white/20 overflow-hidden">
                                 <motion.div
-                                  className="h-full bg-emerald-400"
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${currentItem.progress}%` }}
-                                  transition={{ duration: 0.3 }}
+                                  className="h-full w-full origin-left bg-emerald-400"
+                                  initial={{ scaleX: 0 }}
+                                  animate={{ scaleX: currentItem.progress / 100 }}
+                                  transition={easeOut(DURATION.overlay)}
                                 />
                               </div>
                             </motion.div>

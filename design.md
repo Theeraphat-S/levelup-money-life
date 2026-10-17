@@ -27,7 +27,7 @@
 | Framework | React + Vite (TypeScript) |
 | Desktop | Tauri v2 |
 | Styling | Tailwind CSS **v4** (`@tailwindcss/postcss`) |
-| Animation | Framer Motion v12 |
+| Animation | Motion v12 (`motion/react`) |
 | Icons | `@phosphor-icons/react` v2 |
 | Font (sans) | `Outfit Variable` (`@fontsource-variable/outfit`) |
 | Font (mono) | `JetBrains Mono Variable` (`@fontsource-variable/jetbrains-mono`) |
@@ -282,7 +282,7 @@ className="bg-[#FEFFFC] text-[#142D2B]"
 
 ```tsx
 <div className="inline-flex items-center rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] p-0.5 shadow-xs">
-  {/* Active indicator via Framer Motion layoutId */}
+  {/* Active indicator via Motion layoutId */}
   <motion.div layoutId="pillIndicator" className="absolute inset-0 rounded-lg bg-[var(--color-surface)] shadow-xs border border-[var(--color-line)]" />
   <button className="relative z-10 ...">Option A</button>
 </div>
@@ -313,59 +313,71 @@ className="bg-[#FEFFFC] text-[#142D2B]"
 
 ## 7. Motion & Animation
 
-**MOTION_INTENSITY: Level 6** — Fluid CSS + Framer Motion basics
+**Library:** `motion` (import จาก `"motion/react"`) — ไม่ใช้ `framer-motion` โดยตรงอีกต่อไป
+**Tokens:** `src/constants/motion.ts` — ห้ามเขียน `stiffness`/`damping`/`ease` แบบ inline ใน component
 
-### 7.1 Standard Easing
+หลักคิด (จาก Impeccable `animate`): motion ต้องมีหน้าที่ — ยืนยัน action, อธิบาย state/ความสัมพันธ์, รักษา continuity หรือเป็นโมเมนต์สำคัญหนึ่งเดียว (Level Up) ไม่ใช่ของตกแต่ง
 
-```
-ease: [0.16, 1, 0.3, 1]   // Expo out — ใช้ทุก transition ที่ไม่ใช่ spring
+### 7.1 Timing
+
+| Token | ระยะเวลา | ใช้กับ |
+|---|---|---|
+| `DURATION.feedback` | 120ms | feedback ทันที (กด, toggle) |
+| `DURATION.state` | 200ms | เปลี่ยน state ทั่วไป |
+| `DURATION.overlay` | 300ms | modal, view transition, card mount |
+| `DURATION.focal` | 600ms | โมเมนต์ที่ตั้งใจ (XP bar) |
+
+Exit เร็วกว่า entrance เสมอ · Easing หลัก: `EASE_OUT_EXPO = [0.16, 1, 0.3, 1]` ผ่าน `easeOut(duration)`
+
+### 7.2 Springs (Motion `visualDuration` + `bounce`)
+
+```ts
+SPRING.press     // { visualDuration: 0.15, bounce: 0 }  ปุ่ม, tile hover/tap
+SPRING.state     // { visualDuration: 0.22, bounce: 0 }  pill indicator, popover, select
+SPRING.overlay   // { visualDuration: 0.3,  bounce: 0 }  modal, toast
+SPRING.celebrate // { visualDuration: 0.5,  bounce: 0.2 } Level Up เท่านั้น
 ```
 
-### 7.2 Spring Physics
-
-```
-Standard spring:  { type: "spring", stiffness: 350, damping: 25 }   // MetricTile hover
-Snappy spring:    { type: "spring", stiffness: 400, damping: 30 }   // Pill indicator
-Slow weight:      { duration: 0.8, ease: [0.16, 1, 0.3, 1] }       // XP bar
-```
+งาน routine ใช้ `bounce: 0` (ไม่ overshoot) — bounce อนุญาตเฉพาะ celebration
 
 ### 7.3 Mount Animation Presets
 
 ```tsx
-// BentoCard
+// BentoCard (ไม่มี hover lift — การ์ดที่คลิกไม่ได้ห้ามลอย)
 initial={{ opacity: 0, y: 12 }}
 animate={{ opacity: 1, y: 0 }}
-transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+transition={easeOut(DURATION.overlay)}
 
 // Modal
-initial={{ opacity: 0, scale: 0.96, y: 8 }}
-animate={{ opacity: 1, scale: 1, y: 0 }}
-transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+transition={SPRING.overlay}
 ```
 
 ### 7.4 Staggered List
 
-```tsx
-// Parent
-const container = { animate: { transition: { staggerChildren: 0.06 } } }
+ใช้ `stagger()` ของ Motion เฉพาะเมื่อสิ่งที่ปรากฏเป็น list จริง และจำกัด delay รวม ≤ ~300ms
 
-// Child
-const item = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } }
-}
+```tsx
+import { stagger } from "motion/react";
+const container = { animate: { transition: { delayChildren: stagger(0.04) } } };
 ```
 
-### 7.5 Performance Rules
+### 7.5 Performance & Anti-patterns
 
 | ห้าม | แทนด้วย |
 |---|---|
-| Animate `top`, `left`, `width`, `height` | Animate `transform` และ `opacity` เท่านั้น |
-| `window.addEventListener('scroll')` | Framer Motion `useScroll` |
+| Animate `width`/`height`/`top`/`left` สำหรับ progress bar | `scaleX` + `origin-left` (w-full) |
+| `animate-pulse` บน status ที่นิ่ง | จุดสีนิ่ง — pulse เฉพาะงานที่กำลังทำงานจริง (เช่น OCR scanning) |
+| `whileHover` ยก/หมุน element ที่คลิกไม่ได้ หรือรูป/โลโก้ | hover feedback เฉพาะ element ที่ interactive |
+| Spring stiffness/damping ที่ overshoot | `SPRING.*` tokens |
+| `window.addEventListener('scroll')` | `useScroll` จาก `motion/react` |
 | `useState` สำหรับ continuous animation | `useMotionValue` + `useTransform` |
 | `z-50` ไม่มีเหตุผล | z-index เฉพาะ modal (50), overlay (30) |
 
+ข้อยกเว้น: expand/collapse panel ใช้ `height: "auto"` ของ Motion ได้ (Motion วัดขนาดให้)
+
 ### 7.6 Reduced Motion (ห้ามลบ)
+
+`<MotionConfig reducedMotion="user">` ครอบทั้งแอป (ตัด transform, คง opacity/สี) + CSS fallback:
 
 ```css
 @media (prefers-reduced-motion: reduce) {

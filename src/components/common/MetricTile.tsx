@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
+import { SPRING } from "../../constants/motion";
 import { AnimatedCounter } from "./AnimatedCounter";
 
 interface MetricTileProps {
@@ -88,7 +89,7 @@ export const MetricTile: React.FC<MetricTileProps> = ({
       ref={tileRef}
       onMouseMove={handleMouseMove}
       whileHover={!shouldReduceMotion ? { y: -2 } : undefined}
-      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+      transition={SPRING.press}
       onClick={onClick}
       className={`group relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:p-4.5 shadow-[var(--shadow-tile)] transition-shadow duration-300 hover:shadow-[var(--shadow-diffuse)] ${onClick ? "cursor-pointer" : ""} ${className}`}
     >

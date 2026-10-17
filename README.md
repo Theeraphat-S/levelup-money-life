@@ -203,7 +203,7 @@ Database Layer       SQLite (@tauri-apps/plugin-sql) — 100% Local-First
 Testing Engine       Vitest (119 Unit & Integration Tests Passing)
 OCR Engine           Tesseract.js + HTML5 Canvas Preprocessing
 Charts & Visuals     Recharts
-Motion & Animations  Framer Motion v12 (Spring Physics & Micro-Interactions)
+Motion & Animations  Motion v12 — motion/react (Spring Physics & Micro-Interactions)
 Iconography          Phosphor Icons React + Lucide React
 Typography           Outfit (UI Sans) + JetBrains Mono (Financial Numbers)
 Internationalization react-i18next (TH / EN)

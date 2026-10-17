@@ -1,5 +1,6 @@
 import React from "react";
-import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
+import { motion, useReducedMotion, type HTMLMotionProps } from "motion/react";
+import { SPRING } from "../../constants/motion";
 
 interface TactileButtonProps extends HTMLMotionProps<"button"> {
   children: React.ReactNode;
@@ -19,7 +20,7 @@ export const TactileButton: React.FC<TactileButtonProps> = ({
     <motion.button
       whileTap={!disabled && !shouldReduceMotion ? { scale: 0.97 } : undefined}
       whileHover={!disabled && !shouldReduceMotion ? { y: -1 } : undefined}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      transition={SPRING.press}
       disabled={disabled}
       className={`relative select-none transition-colors ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${className}`}
       {...props}

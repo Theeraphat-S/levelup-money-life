@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
-import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
+import { motion, useReducedMotion, type HTMLMotionProps } from "motion/react";
+import { SPRING } from "../../constants/motion";
 
 interface SpotlightCardProps extends HTMLMotionProps<"div"> {
   children: React.ReactNode;
@@ -36,7 +37,7 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
           ? { y: -2 }
           : undefined
       }
-      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+      transition={SPRING.press}
       className={`group/spotlight relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-[var(--shadow-tile)] transition-shadow duration-300 hover:shadow-[var(--shadow-diffuse)] ${className}`}
       {...props}
     >

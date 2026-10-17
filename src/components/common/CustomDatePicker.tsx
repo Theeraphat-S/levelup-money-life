@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useId } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
+import { SPRING } from "../../constants/motion";
 import {
   CalendarBlank,
   CaretLeft,
@@ -297,7 +298,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
             initial={{ opacity: 0, y: -6, scale: 0.96 }}
             animate={{ opacity: 1, y: 6, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
-            transition={{ type: "spring", stiffness: 450, damping: 30 }}
+            transition={SPRING.state}
             className={`absolute z-50 w-72 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)]/95 p-3.5 backdrop-blur-xl shadow-2xl outline-none ${
               align === "right" ? "right-0" : "left-0"
             }`}

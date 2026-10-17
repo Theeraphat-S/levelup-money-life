@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useId } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
+import { SPRING } from "../../constants/motion";
 import { CaretDown, Check } from "@phosphor-icons/react";
 
 export interface CustomSelectOption {
@@ -198,7 +199,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             initial={{ opacity: 0, y: -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 4, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 450, damping: 30 }}
+            transition={SPRING.state}
             className={`absolute z-50 min-w-[160px] max-h-64 overflow-y-auto rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]/95 p-1 backdrop-blur-xl shadow-2xl outline-none ${
               align === "right" ? "right-0" : "left-0"
             } ${menuClassName}`}

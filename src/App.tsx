@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
-import { AnimatePresence, motion, MotionConfig, useReducedMotion, type HTMLMotionProps } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig, useReducedMotion, type HTMLMotionProps } from "motion/react";
+import { SPRING, DURATION, easeOut } from "./constants/motion";
 import { CalendarDots, Sparkle } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 
@@ -414,7 +415,7 @@ export default function App() {
     initial: shouldReduceMotion ? false : { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -8 },
-    transition: { duration: shouldReduceMotion ? 0 : 0.35, ease: [0.16, 1, 0.3, 1] },
+    transition: shouldReduceMotion ? { duration: 0 } : easeOut(DURATION.overlay),
   };
 
   return (
@@ -632,7 +633,7 @@ export default function App() {
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 15, scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              transition={SPRING.overlay}
               className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-2xl border border-emerald-500/30 bg-[var(--color-surface)] px-4 py-3 shadow-xl backdrop-blur-md"
             >
               <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">

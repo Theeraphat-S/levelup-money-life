@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { easeOut } from "../../constants/motion";
 import {
   AirplaneTilt,
   ArrowDown,
@@ -448,13 +449,13 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                   {/* Multi-milestone Progress Bar */}
                   <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-[var(--color-line-subtle)] border border-[var(--color-line)]/40">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-[#1C5954] to-[#4D8E75] dark:from-[#76AA9D] dark:to-[#8BB999]"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pace.progressPercent}%` }}
+                      className="h-full w-full origin-left rounded-full bg-gradient-to-r from-[#1C5954] to-[#4D8E75] dark:from-[#76AA9D] dark:to-[#8BB999]"
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: Math.min(pace.progressPercent, 100) / 100 }}
                       transition={
                         shouldReduceMotion
                           ? { duration: 0 }
-                          : { duration: 0.5, ease: [0.16, 1, 0.3, 1] }
+                          : easeOut(0.5)
                       }
                     />
                   </div>
@@ -506,7 +507,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                   ) : (
                     <div className="flex items-center justify-between">
                       <span className="text-[var(--color-ink-soft)] flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-[var(--jade)] animate-pulse" />
+                        <span className="h-2 w-2 rounded-full bg-[var(--jade)]" />
                         {t("savings.onTrack")} · {t("savings.daysRemaining", { days: pace.daysRemaining })}
                       </span>
                       <div className="text-right font-mono">

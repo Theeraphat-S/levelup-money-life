@@ -1,5 +1,6 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
+import { SPRING } from "../constants/motion";
 import { useTranslation } from "react-i18next";
 
 export interface AppLogoProps {
@@ -176,9 +177,9 @@ export const AppLogo: React.FC<AppLogoProps> = ({
     <div className={`inline-flex items-center gap-3 select-none ${className}`}>
       {animated ? (
         <motion.div
-          whileHover={{ scale: 1.06, rotate: 1 }}
+          whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.96 }}
-          transition={{ type: "spring", stiffness: 300, damping: 15 }}
+          transition={SPRING.press}
           className="cursor-pointer"
         >
           {logoIcon}

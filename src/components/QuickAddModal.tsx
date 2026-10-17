@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { getLocalTodayISO } from "../utils/safeToSpend";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
+import { SPRING } from "../constants/motion";
 import {
   Check,
   Coins,
@@ -148,7 +149,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
-            transition={{ type: "spring", stiffness: 350, damping: 28 }}
+            transition={SPRING.overlay}
             className="relative w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-2xl z-10"
           >
             {/* 1px Inner Liquid Glass Highlight */}

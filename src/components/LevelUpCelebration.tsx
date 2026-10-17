@@ -1,5 +1,6 @@
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
+import { SPRING } from "../constants/motion";
 import { Sparkle, Trophy } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 
@@ -34,7 +35,7 @@ export const LevelUpCelebration: React.FC<LevelUpCelebrationProps> = ({
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            transition={SPRING.celebrate}
             className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-[var(--jade)]/30 bg-[var(--color-surface)] p-6 text-center shadow-2xl z-10"
           >
             {/* 1px Inner Liquid Glass Highlight */}
@@ -46,7 +47,7 @@ export const LevelUpCelebration: React.FC<LevelUpCelebrationProps> = ({
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ delay: 0.15, type: "spring", stiffness: 300, damping: 20 }}
+              transition={{ ...SPRING.celebrate, delay: 0.15 }}
               className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-[var(--jade)]/40 bg-[var(--jade-soft)] text-[var(--jade)] shadow-lg"
             >
               <Trophy size={36} weight="fill" />

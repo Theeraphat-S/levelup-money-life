@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
-import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
+import { motion, useReducedMotion, type HTMLMotionProps } from "motion/react";
+import { DURATION, easeOut } from "../../constants/motion";
 
 interface BentoCardProps extends HTMLMotionProps<"section"> {
   children: React.ReactNode;
@@ -36,8 +37,7 @@ export const BentoCard: React.FC<BentoCardProps> = ({
       initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
       animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
       exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-      whileHover={!shouldReduceMotion ? { y: -2 } : undefined}
-      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      transition={easeOut(DURATION.overlay)}
       className={`group/bento relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-[var(--shadow-tile)] transition-shadow duration-300 hover:shadow-[var(--shadow-diffuse)] ${className}`}
       {...motionProps}
     >

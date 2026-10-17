@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowRight,
   ArrowsClockwise,
@@ -328,7 +328,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
             title="Click to toggle safe-to-spend breakdown"
             aria-expanded={isSafeInfoExpanded}
           >
-            <span className={`h-2 w-2 rounded-full animate-pulse ${statusDotClass}`} />
+            <span className={`h-2 w-2 rounded-full ${statusDotClass}`} />
             <span>
               {!hasBudget ? t("ux.noPlan") : activeMonth === todayStr.slice(0, 7) ? t("safeToSpend.badge", { amount: thb.format(safeStats.dailySafeToSpend) }) : t("safeToSpend.monthLeft", { amount: thb.format(Math.max(0, safeStats.monthRemaining)) })}
             </span>

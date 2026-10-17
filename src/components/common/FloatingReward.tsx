@@ -1,5 +1,6 @@
 import React from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { easeOut } from "../../constants/motion";
 
 export interface FloatingRewardItem {
   id: string;
@@ -41,7 +42,7 @@ export const FloatingReward: React.FC<FloatingRewardProps> = ({
                 ? { opacity: 0 }
                 : { opacity: 0, y: -45, scale: 0.95 }
             }
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            transition={easeOut(0.5)}
             onAnimationComplete={() => onComplete?.(reward.id)}
             style={{
               left: reward.x ?? "50%",
