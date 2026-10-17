@@ -1,5 +1,6 @@
 import React from "react";
 import { CheckCircle, Circle, Scales, Sparkle, Target } from "./icons";
+import { LordIcon } from "./common/LordIcon";
 import { useTranslation } from "react-i18next";
 import { useCategories } from "../hooks/useCategories";
 import type { Account, Transaction } from "../types";
@@ -70,7 +71,7 @@ export const MoneyHabitQuests: React.FC<MoneyHabitQuestsProps> = ({ accounts, tr
         >
           <div className="flex min-w-0 items-center gap-3">
             {row.done
-              ? <CheckCircle size={20} weight="fill" className="shrink-0 text-[var(--jade)]" aria-label={t("quests.system.completed")} />
+              ? <span className="shrink-0 text-[var(--jade)]" role="img" aria-label={t("quests.system.completed")}><LordIcon name="medal" size={28} fallback={<CheckCircle size={20} weight="fill" />} /></span>
               : <Circle size={20} weight="duotone" className="shrink-0 text-[var(--color-ink-soft)]" aria-hidden />}
             <span className="shrink-0 text-[var(--primary)]" aria-hidden>{row.icon}</span>
             <div className="min-w-0">

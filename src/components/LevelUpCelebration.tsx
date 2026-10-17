@@ -2,6 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { SPRING } from "../constants/motion";
 import { Sparkle, Trophy } from "./icons";
+import { LordIcon } from "./common/LordIcon";
 import { useTranslation } from "react-i18next";
 
 interface LevelUpCelebrationProps {
@@ -50,7 +51,7 @@ export const LevelUpCelebration: React.FC<LevelUpCelebrationProps> = ({
               transition={{ ...SPRING.celebrate, delay: 0.15 }}
               className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-[var(--jade)]/40 bg-[var(--jade-soft)] text-[var(--jade)] shadow-lg"
             >
-              <Trophy size={36} weight="fill" />
+              <LordIcon name="confetti" size={48} fallback={<Trophy size={36} weight="fill" />} />
             </motion.div>
 
             <motion.div

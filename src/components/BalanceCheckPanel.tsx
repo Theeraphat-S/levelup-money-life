@@ -3,6 +3,7 @@ import { CheckCircle, Plus, Trash, WarningCircle } from "./icons";
 import { useTranslation } from "react-i18next";
 import { useCategories } from "../hooks/useCategories";
 import type { Account, Transaction } from "../types";
+import { LordIcon } from "./common/LordIcon";
 import { balanceDifference, buildBalanceAdjustment, type SplitLine } from "../utils/balanceCheck";
 import { getLocalTodayISO } from "../utils/safeToSpend";
 
@@ -88,7 +89,7 @@ export const BalanceCheckPanel: React.FC<BalanceCheckPanelProps> = ({ account, r
           role="status"
           className={`flex items-center gap-1.5 text-sm font-semibold ${difference === 0 ? "text-[var(--jade-ink)]" : difference < 0 ? "text-[var(--rose-ink)]" : "text-[var(--amber-ink)]"}`}
         >
-          {difference === 0 ? <CheckCircle size={16} weight="fill" aria-hidden /> : <WarningCircle size={16} weight="fill" aria-hidden />}
+          {difference === 0 ? <LordIcon name="scale" size={26} fallback={<CheckCircle size={16} weight="fill" aria-hidden />} /> : <WarningCircle size={16} weight="fill" aria-hidden />}
           {difference === 0
             ? t("accounts.matches")
             : difference < 0

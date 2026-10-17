@@ -24,6 +24,7 @@ import {
 } from "../icons";
 import { useTranslation } from "react-i18next";
 import { AppIcon, SAVINGS_GOAL_ICON_KEYS, normalizeIconKey } from "../icons/registry";
+import { LordIcon } from "../common/LordIcon";
 import { BentoCard } from "../common/BentoCard";
 import { TactileButton } from "../common/TactileButton";
 import { AnimatedCounter } from "../common/AnimatedCounter";
@@ -363,6 +364,13 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
           </div>
         </BentoCard>
       </div>
+
+      {goals.length === 0 && (
+        <div className="py-10 text-center">
+          <LordIcon name="piggy-bank" size={88} className="mx-auto text-[var(--primary)]" fallback={<PiggyBank size={48} weight="duotone" />} />
+          <p className="mt-2 text-xs font-semibold text-[var(--color-ink-soft)]">{t("savings.emptyGoals")}</p>
+        </div>
+      )}
 
       {/* Goals List Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

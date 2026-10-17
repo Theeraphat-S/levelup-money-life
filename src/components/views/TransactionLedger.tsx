@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { LordIcon } from "../common/LordIcon";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowDown,
@@ -8,6 +9,7 @@ import {
   ArrowUUpLeft,
   CheckCircle,
   Circle,
+  Coins,
   Funnel,
   MagnifyingGlass,
   Plus,
@@ -647,6 +649,9 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
 
         {items.length === 0 && (
           <div className="py-12 text-center">
+            {!activeFilterCount && (
+              <LordIcon name="coins" size={72} className="mx-auto mb-2 text-[var(--primary)]" fallback={<Coins size={40} weight="duotone" />} />
+            )}
             <h3 className="text-sm font-bold text-[var(--color-ink)]">
               {t(activeFilterCount ? "expense.noResultsTitle" : "ux.emptyMonth")}
             </h3>

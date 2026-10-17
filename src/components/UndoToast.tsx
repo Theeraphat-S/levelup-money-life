@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { SPRING } from "../constants/motion";
 import { ArrowUUpLeft, CheckCircle, Sparkle, X } from "./icons";
 import { useTranslation } from "react-i18next";
+import { LordIcon } from "./common/LordIcon";
 import { useCategories } from "../hooks/useCategories";
 import type { Transaction } from "../types";
 
@@ -87,7 +88,7 @@ export const UndoToast: React.FC<UndoToastProps> = ({
             <div className="flex items-center gap-3 min-w-0">
               {/* Status Icon */}
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--jade-soft)] text-[var(--jade)] border border-[var(--jade)]/30 shadow-xs">
-                <CheckCircle size={18} weight="fill" />
+                <LordIcon name="check" size={26} fallback={<CheckCircle size={18} weight="fill" />} />
               </div>
 
               {/* Description & Amount */}

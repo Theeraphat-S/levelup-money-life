@@ -146,6 +146,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                   label={t("settings.launchAtLogin")}
                 />
               </section>
+
+              <p className="text-center text-xs text-[var(--color-ink-faint)]">
+                <a href="https://lordicon.com/" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-[var(--color-ink-soft)]">
+                  {t("savings.iconCredit")}
+                </a>
+              </p>
             </div>
           </motion.div>
         </div>
