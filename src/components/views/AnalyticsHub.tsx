@@ -142,7 +142,7 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
         <MetricTile
           icon={<Fire size={18} weight="fill" />}
           label={t("metric.burnRate")}
-          value={`฿${thb.format(burnRate)} / day`}
+          value={t("ux.perDay", { amount: thb.format(burnRate) })}
           tone="neutral"
         />
       </div>

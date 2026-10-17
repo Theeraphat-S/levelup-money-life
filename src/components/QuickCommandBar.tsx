@@ -386,7 +386,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               </div>
               <div>
                 <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
-                  {t("safeToSpend.monthSpent", { amount: "" }).replace(":", "")}
+                  {t("safeToSpend.monthSpentLabel")}
                 </div>
                 <div className="font-mono font-bold text-[var(--rose-ink)]">
                   ฿{thb.format(safeStats.monthSpent)}
@@ -406,7 +406,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               </div>
               <div>
                 <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
-                  {t("safeToSpend.monthLeft", { amount: "" }).replace(":", "")}
+                  {t("safeToSpend.monthLeftLabel")}
                 </div>
                 <div className="font-mono font-bold text-[var(--jade-ink)]">
                   ฿{thb.format(Math.max(0, safeStats.monthRemaining))}
@@ -472,7 +472,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               <button
                 type="button"
                 onClick={() => setInputVal("")}
-                aria-label="Clear input"
+                aria-label={t("ux.clearInput")}
                 className="rounded-lg p-1 text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)] transition"
               >
                 <X size={15} />
@@ -550,7 +550,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
             <motion.div
               id="quick-bar-autocomplete-list"
               role="listbox"
-              aria-label="Transaction autocomplete suggestions"
+              aria-label={t("ux.suggestions")}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}

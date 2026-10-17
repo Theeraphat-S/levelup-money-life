@@ -20,11 +20,14 @@ import { BentoCard } from "../common/BentoCard";
 import { MetricTile } from "../common/MetricTile";
 import { TactileButton } from "../common/TactileButton";
 import { FloatingReward, type FloatingRewardItem } from "../common/FloatingReward";
-import { UpcomingBillsSummary } from "../RecurringBills";
+import { AccountBalancesCard } from "../AccountBalancesCard";
+import { DashboardTodo, type BucketOverage } from "../DashboardTodo";
 import { CategoryIcon } from "../common/CategoryIcon";
 import type { CardBillOccurrence } from "../../utils/cardBills";
 import { calculateDailySafeToSpend, getLocalTodayISO } from "../../utils/safeToSpend";
 import {
+  type Account,
+  type Transfer,
   type Allocation,
   type Quest,
   type RecurringBill,
@@ -48,6 +51,9 @@ interface DashboardOverviewProps {
   savingsGoals?: SavingsGoal[];
   recurringBills: RecurringBill[];
   cardBills?: CardBillOccurrence[];
+  accounts: Account[];
+  transfers: Transfer[];
+  onOpenAccounts: () => void;
 }
 
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
@@ -63,6 +69,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   savingsGoals,
   recurringBills,
   cardBills,
+  accounts,
+  transfers,
+  onOpenAccounts,
 }) => {
   const { t } = useTranslation();
   const categories = useCategories();
@@ -105,6 +114,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
 
+  // Needs/Wants buckets that went past their share of planned income this month
+  const overages: BucketOverage[] = monthIncome === 0 ? [] : allocations
+    .filter((allocation) => {
+      const bucket = allocation.label as keyof typeof bucketActuals;
+      return bucket !== "Savings" && bucketActuals[bucket] > (income * allocation.percent) / 100;
+    })
+    .map((allocation) => ({
+      bucket: allocation.label,
+      amount: bucketActuals[allocation.label as keyof typeof bucketActuals] - (income * allocation.percent) / 100,
+    }));
+
   const completedQuests = quests.filter((q) => q.done).length;
   const today = getLocalTodayISO();
   const safeToSpend = calculateDailySafeToSpend(transactions, allocations, income, activeMonth, today, {
@@ -119,7 +139,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     if (!quest.done) {
       const newReward: FloatingRewardItem = {
         id: `${quest.id}-${Date.now()}`,
-        text: `+${quest.xp} XP Completed!`,
+        text: t("ux.xpCompleted", { xp: quest.xp }),
         x: e.clientX,
         y: e.clientY,
       };
@@ -134,59 +154,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         <h1 className="text-2xl font-semibold tracking-tight">{t("ux.moneySummary", { month: activeMonth })}</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-ink-soft)]">{t("ux.actualExplanation")}</p>
       </div>
-      <section className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-4" aria-label={t("ux.reviewSpending")}>
-        {monthIncome === 0 ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm">{t("ux.noIncome")}</p><button type="button" onClick={onOpenIncome || onOpenQuickAdd} className="rounded-lg bg-[#1C5954] text-[#FEFFFC] dark:bg-[#76AA9D] dark:text-[#071B1A] px-3 py-2 text-sm font-semibold transition active:scale-[0.98] shadow-xs cursor-pointer">{t("ux.addIncome")}</button></div> : (() => {
-          const exceeded = allocations.filter(allocation => {
-            const bucket = allocation.label as keyof typeof bucketActuals;
-            return bucket !== "Savings" && bucketActuals[bucket] > income * allocation.percent / 100;
-          });
-          return exceeded.length ? <div className="space-y-2">{exceeded.map(allocation => <div key={allocation.id} className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-[var(--rose-ink)]">{t("ux.overBudget", { bucket: t(`alloc.${allocation.label}`), amount: thb.format(bucketActuals[allocation.label as keyof typeof bucketActuals] - income * allocation.percent / 100) })}</p><button type="button" onClick={() => setActiveTab("ledger")} className="text-sm font-semibold underline transition active:scale-[0.98] cursor-pointer">{t("ux.reviewSpending")}</button></div>)}</div> : <p className="text-sm">{t("ux.allClear")}</p>;
-        })()}
-      </section>
       <FloatingReward
         rewards={floatingRewards}
         onComplete={(id) => {
           setFloatingRewards((prev) => prev.filter((r) => r.id !== id));
         }}
       />
-
-      {/* Top Metric Cards Grid */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricTile
-          icon={<ChartLineUp size={18} weight="duotone" />}
-          label={t("metric.net")}
-          numericValue={netCashFlow}
-          prefix="฿"
-          showSign={true}
-          subtext={t("ux.flowExplanation")}
-          tone={netCashFlow >= 0 ? "jade" : "rose"}
-        />
-        <MetricTile
-          icon={<Coins size={18} weight="duotone" />}
-          label={t("metric.income")}
-          numericValue={monthIncome}
-          prefix="฿"
-          subtext={t("ux.expectedIncome", { amount: thb.format(income) })}
-          tone="jade"
-        />
-        <MetricTile
-          icon={<Receipt size={18} weight="duotone" />}
-          label={t("metric.spent")}
-          numericValue={monthExpenses}
-          prefix="฿"
-          subtext={t("ux.entryCount", { count: totalCount })}
-          tone="rose"
-        />
-        <MetricTile
-          icon={<PiggyBank size={18} weight="duotone" />}
-          label={t("metric.savingsRate")}
-          numericValue={monthIncome > 0 ? savingsRate : undefined}
-          value={monthIncome > 0 ? undefined : "—"}
-          suffix="%"
-          subtext={t("ux.savedExplanation", { amount: thb.format(netSaved) })}
-          tone={savingsRate >= 20 ? "jade" : "amber"}
-        />
-      </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         <BentoCard className="lg:col-span-7" header={
@@ -208,7 +181,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               {safeToSpend.shortfall === 0 && <p className="mt-1 text-xs text-[var(--color-ink-soft)]">{t("safeToSpend.daysLeft", { days: safeToSpend.daysRemainingInMonth })}</p>}
             </div>
             <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3.5 py-2.5 sm:text-right">
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-ink-soft)] sm:justify-end"><CalendarDots size={13} />{activeMonth === today.slice(0, 7) ? t("safeToSpend.dailyAverage") : t("safeToSpend.monthLeft", { amount: "" }).replace(":", "")}</p>
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-ink-soft)] sm:justify-end"><CalendarDots size={13} />{activeMonth === today.slice(0, 7) ? t("safeToSpend.dailyAverage") : t("safeToSpend.monthLeftLabel")}</p>
               <p className="mt-1 font-mono text-lg font-bold text-[var(--color-ink)]">฿{thb.format(activeMonth === today.slice(0, 7) ? safeToSpend.dailySafeToSpend : Math.max(0, safeToSpend.monthRemaining))}</p>
             </div>
           </div>
@@ -216,13 +189,68 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <motion.div className={`h-full w-full origin-left rounded-full ${safeToSpend.shortfall > 0 ? "bg-[var(--rose)]" : "bg-[var(--jade)]"}`} initial={shouldReduceMotion ? { scaleX: reservedPercent / 100 } : { scaleX: 0 }} animate={{ scaleX: reservedPercent / 100 }} transition={{ duration: shouldReduceMotion ? 0 : 0.35 }} />
           </div>
           <div className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
-            <div><p className="text-[var(--color-ink-soft)]">{t("safeToSpend.monthSpent")}</p><p className="mt-0.5 font-mono font-bold text-[var(--color-ink)]">฿{thb.format(safeToSpend.monthSpent)}</p></div>
+            <div><p className="text-[var(--color-ink-soft)]">{t("safeToSpend.monthSpentLabel")}</p><p className="mt-0.5 font-mono font-bold text-[var(--color-ink)]">฿{thb.format(safeToSpend.monthSpent)}</p></div>
             <div><p className="text-[var(--color-ink-soft)]">{t("safeToSpend.unpaidBills")}</p><p className="mt-0.5 font-mono font-bold text-[var(--color-ink)]">฿{thb.format(safeToSpend.unpaidBillsTotal)}</p></div>
             <div><p className="text-[var(--color-ink-soft)]">{t("safeToSpend.plannedSavings")}</p><p className="mt-0.5 font-mono font-bold text-[var(--color-ink)]">฿{thb.format(safeToSpend.plannedSavingsAmount)}</p></div>
           </div>
           <p className="mt-3 text-[11px] leading-relaxed text-[var(--color-ink-faint)]">{t("ux.budgetExplanation", { amount: thb.format(income) })}</p>
         </BentoCard>
-        <div className="lg:col-span-5"><UpcomingBillsSummary bills={recurringBills} transactions={transactions} activeMonth={activeMonth} setActiveTab={setActiveTab} cardBills={cardBills} /></div>
+        <div className="lg:col-span-5"><AccountBalancesCard accounts={accounts} transactions={transactions} transfers={transfers} onOpenAccounts={onOpenAccounts} /></div>
+      </div>
+
+      {/* What needs attention, then the month at a glance */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <div className="lg:col-span-7">
+          <DashboardTodo
+            activeMonth={activeMonth}
+            transactions={transactions}
+            monthIncome={monthIncome}
+            overages={overages}
+            recurringBills={recurringBills}
+            cardBills={cardBills ?? []}
+            accounts={accounts}
+            setActiveTab={setActiveTab}
+            onOpenIncome={onOpenIncome || onOpenQuickAdd}
+            onOpenAccounts={onOpenAccounts}
+          />
+        </div>
+        {/* Compact month KPIs */}
+        <div className="lg:col-span-5 grid grid-cols-2 gap-3 content-start">
+          <MetricTile
+            icon={<ChartLineUp size={18} weight="duotone" />}
+            label={t("metric.net")}
+            numericValue={netCashFlow}
+            prefix="฿"
+            showSign={true}
+            subtext={t("ux.flowExplanation")}
+            tone={netCashFlow >= 0 ? "jade" : "rose"}
+          />
+          <MetricTile
+            icon={<Coins size={18} weight="duotone" />}
+            label={t("metric.income")}
+            numericValue={monthIncome}
+            prefix="฿"
+            subtext={t("ux.expectedIncome", { amount: thb.format(income) })}
+            tone="jade"
+          />
+          <MetricTile
+            icon={<Receipt size={18} weight="duotone" />}
+            label={t("metric.spent")}
+            numericValue={monthExpenses}
+            prefix="฿"
+            subtext={t("ux.entryCount", { count: totalCount })}
+            tone="rose"
+          />
+          <MetricTile
+            icon={<PiggyBank size={18} weight="duotone" />}
+            label={t("metric.savingsRate")}
+            numericValue={monthIncome > 0 ? savingsRate : undefined}
+            value={monthIncome > 0 ? undefined : "—"}
+            suffix="%"
+            subtext={t("ux.savedExplanation", { amount: thb.format(netSaved) })}
+            tone={savingsRate >= 20 ? "jade" : "amber"}
+          />
+        </div>
       </div>
 
       {/* Bento Row 1: Budget Health & Daily Quests */}

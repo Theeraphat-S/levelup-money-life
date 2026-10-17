@@ -91,11 +91,11 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
     e.preventDefault();
     const numAmount = parseFloat(amount);
     if (!name.trim()) {
-      setFormError("Please enter a preset name");
+      setFormError(t("ux.descriptionRequired"));
       return;
     }
     if (isNaN(numAmount) || numAmount <= 0) {
-      setFormError("Please enter a positive amount");
+      setFormError(t("ux.amountRequired"));
       return;
     }
 

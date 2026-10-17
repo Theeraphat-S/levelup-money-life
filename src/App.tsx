@@ -599,6 +599,7 @@ export default function App() {
           onOpenDataManager={() => setIsDataManagerOpen(true)}
           onOpenAccounts={() => setIsAccountsOpen(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenCategories={() => setIsCategoriesOpen(true)}
           themeMode={themeMode}
           setThemeMode={setThemeMode}
         />
@@ -647,6 +648,9 @@ export default function App() {
                 savingsGoals={savingsGoals}
                 recurringBills={recurringBills}
                 cardBills={cardBills}
+                accounts={accounts}
+                transfers={transfers}
+                onOpenAccounts={() => setIsAccountsOpen(true)}
               />
             </motion.div>
           )}
@@ -658,6 +662,9 @@ export default function App() {
                 setTransactions={setTransactions}
                 activeMonth={activeMonth}
                 onOpenQuickAdd={() => setIsQuickAddOpen(true)}
+                accounts={accounts}
+                transfers={transfers}
+                onDeleteTransfer={deleteTransfer}
               />
             </motion.div>
           )}

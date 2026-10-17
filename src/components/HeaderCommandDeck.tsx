@@ -4,9 +4,7 @@ import { SPRING, DURATION, easeOut } from "../constants/motion";
 import {
   CaretLeft,
   CaretRight,
-  Database,
   Wallet,
-  GearSix,
   Desktop,
   Flame,
   Moon,
@@ -18,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { AppLogo } from "./AppLogo";
 import { AnimatedCounter } from "./common/AnimatedCounter";
 import { TactileButton } from "./common/TactileButton";
+import { ToolsMenu } from "./ToolsMenu";
 import type { GamificationState, ThemeMode, ViewTab } from "../types";
 
 interface HeaderCommandDeckProps {
@@ -31,6 +30,7 @@ interface HeaderCommandDeckProps {
   onOpenDataManager: () => void;
   onOpenAccounts: () => void;
   onOpenSettings: () => void;
+  onOpenCategories: () => void;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
 }
@@ -46,6 +46,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
   onOpenDataManager,
   onOpenAccounts,
   onOpenSettings,
+  onOpenCategories,
   themeMode,
   setThemeMode,
 }) => {
@@ -93,7 +94,6 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
     { id: "ledger", label: t("tabs.ledger") },
     { id: "budget", label: t("tabs.budget") },
     { id: "savings", label: t("tabs.savings") },
-    { id: "tax", label: t("tabs.tax") },
     { id: "analytics", label: t("tabs.analytics") },
     { id: "quests", label: t("tabs.quests") },
   ];
@@ -134,7 +134,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
                   {t("header.streakBadge", { days: gamification.streakDays })}
                 </span>
               </div>
-              <span className="font-mono text-[var(--jade-ink)] font-semibold flex items-center gap-1">
+              <span className="font-mono text-[var(--jade-ink)] font-semibold flex shrink-0 items-center gap-1 whitespace-nowrap">
                 <span>XP:</span>
                 <AnimatedCounter
                   value={gamification.currentLevelXp}
@@ -246,16 +246,12 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
             ))}
           </div>
 
-          {/* Settings Trigger */}
-          <TactileButton
-            type="button"
-            onClick={onOpenSettings}
-            title={t("settings.title")}
-            aria-label={t("settings.title")}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface)] shadow-xs"
-          >
-            <GearSix size={15} weight="duotone" />
-          </TactileButton>
+          <ToolsMenu
+            onOpenTax={() => setActiveTab("tax")}
+            onOpenCategories={onOpenCategories}
+            onOpenDataManager={onOpenDataManager}
+            onOpenSettings={onOpenSettings}
+          />
 
           {/* Accounts Trigger */}
           <TactileButton
@@ -267,18 +263,6 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
           >
             <Wallet size={15} weight="duotone" />
             <span className="hidden 2xl:inline whitespace-nowrap">{t("accounts.open")}</span>
-          </TactileButton>
-
-          {/* Data Manager Trigger */}
-          <TactileButton
-            type="button"
-            onClick={onOpenDataManager}
-            title={t("header.dataManager")}
-            aria-label={t("header.dataManager")}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface)] shadow-xs"
-          >
-            <Database size={15} weight="duotone" />
-            <span className="hidden 2xl:inline whitespace-nowrap">{t("header.dataManager")}</span>
           </TactileButton>
 
           {/* Scan Slip Button */}
@@ -330,6 +314,14 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
             </button>
           );
         })}
+        {activeTab === "tax" && (
+          <span
+            aria-current="page"
+            className="flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-[#1C5954] px-3 text-xs font-semibold text-[#FEFFFC] shadow-sm dark:bg-[#76AA9D] dark:text-[#071B1A]"
+          >
+            {t("tools.title")} · {t("tools.tax")}
+          </span>
+        )}
       </nav>
     </header>
   );

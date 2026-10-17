@@ -362,7 +362,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
 
     const tx = itemToTransaction(currentItem);
     if (!tx) {
-      setFormError("Please enter a valid amount and description");
+      setFormError(t("ux.amountRequired"));
       return;
     }
 
@@ -406,7 +406,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
     });
 
     if (validTxs.length === 0) {
-      setFormError("No valid slip items to save");
+      setFormError(t("ux.noSlipToSave"));
       return;
     }
 
@@ -729,7 +729,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                       <div className="relative aspect-3/4 max-h-[380px] w-full overflow-hidden rounded-xl bg-black/5 dark:bg-black/20 flex items-center justify-center">
                         <img
                           src={currentItem.previewUrl}
-                          alt="Slip Preview"
+                          alt={t("ux.slipPreview")}
                           className="h-full w-full object-contain"
                         />
 
@@ -824,7 +824,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                         )}
 
                         <div className="flex items-center justify-between pt-0.5">
-                          <span className="font-semibold text-[var(--color-ink-soft)]">Engine</span>
+                          <span className="font-semibold text-[var(--color-ink-soft)]">{t("ux.engine")}</span>
                           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
                             <CheckCircle size={12} weight="fill" />
                             {currentItem.result.engine === "gemini"

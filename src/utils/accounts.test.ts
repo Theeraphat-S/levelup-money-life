@@ -11,6 +11,7 @@ import {
   isAliasTaken,
   resolveDefaultAccountId,
   restoreAccountSnapshot,
+  runningBalances,
   sanitizeTransfers,
   validateTransfer,
 } from "./accounts";
@@ -141,5 +142,19 @@ describe("guessing the account from a slip", () => {
     expect(guessAccountForBank("PromptPay (พร้อมเพย์)", [kbank, scb])).toBeUndefined();
     expect(guessAccountForBank("Krungthai Bank (กรุงไทย)", [kbank, scb])).toBeUndefined();
     expect(guessAccountForBank(undefined, [kbank])).toBeUndefined();
+  });
+});
+
+describe("running balance", () => {
+  it("accumulates one account's entries in date order, oldest logged first on the same day", () => {
+    // Stored newest first, like the app keeps them
+    const rows = [tx("lunch", -70, "kb"), tx("salary", 30000, "kb"), { ...tx("old", -500, "kb"), date: "2026-10-01" }, tx("other", -5, "card")];
+    const transfers: Transfer[] = [{ id: "pay", fromAccountId: "kb", toAccountId: "card", amount: 1000, date: "2026-10-03" }];
+    expect(runningBalances(bank, rows, transfers)).toEqual({
+      "tx:old": 9500,
+      "tr:pay": 8500,
+      "tx:salary": 38500,
+      "tx:lunch": 38430,
+    });
   });
 });

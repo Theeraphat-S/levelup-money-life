@@ -164,6 +164,11 @@
 - **Balance Check**: Enter an account's real balance; the app shows what is missing or extra. A shortfall can be split into remembered spending, and the rest is recorded as **Unaccounted** (shown separately in Analytics). A surplus becomes a "Balance adjustment" income. Each account remembers when it was last checked.
 - **Tray & Reminder (desktop)**: Closing the window keeps the app in the system tray (Quit from the tray menu), optional start at sign-in (off by default), and a notification at 20:00 by default — only on days with nothing logged. All of it is in Settings (gear icon).
 
+#### 20. 🧭 Focused Navigation & Dashboard
+- **Six Daily Tabs + Tools**: Tax planner, categories, data & backup and settings live in one Tools menu; the main tabs hold what you use every day or week.
+- **Dashboard Order**: Safe-to-Spend → account balances → *Needs attention* (overdue bills, budget and category overages, stale balance checks) → month KPIs → budget and quests.
+- **Account-Aware Ledger**: Account column and filter, transfers shown as one neutral row, and a running balance when one account is selected — ready to compare with a bank statement.
+
 ---
 
 ## 🇹🇭 ภาษาไทย
@@ -192,6 +197,7 @@
 | 🏦 **บัญชีและการโอน** | แยกเงินสด บัญชีธนาคาร e-Wallet และบัตรเครดิต พร้อมยอดตั้งต้นและยอดคงเหลือ โอนระหว่างบัญชีโดยไม่นับเป็นรายรับหรือรายจ่าย ย้ายรายการเดิมเข้า "บัญชีหลัก" อัตโนมัติ + บิลบัตรเครดิตจากวันตัดรอบ (จ่ายเป็นการโอน ไม่นับรายจ่ายซ้ำ) + พิมพ์ `@ชื่อย่อ` ในช่องจดด่วน, preset ผูกบัญชีได้, สลิปเดาบัญชีจากธนาคาร และผูกเป้าออมกับบัญชีจริงได้ |
 | 🏷️ **หมวดหมู่และงบรายหมวด** | เพิ่ม/แก้/ซ่อนหมวดหมู่ได้เอง พร้อมไอคอนและสีที่ไม่ซ้ำกัน ตั้งงบต่อเดือนรายหมวด แจ้งเตือนเมื่อใช้ถึง 80% และ 100% และพิมพ์ `#ชื่อหมวด` ในช่องจดด่วนได้ |
 | ⚖️ **เช็กยอดจริงและเตือนตอนเย็น** | กรอกยอดจริงของบัญชีเพื่อดูส่วนต่าง แตกเป็นรายการที่จำได้ ส่วนที่เหลือลงหมวด "ไม่ระบุ" (แสดงแยกในสถิติ) + ย่อแอปไปที่ tray, เปิดพร้อมเครื่อง (ปิดไว้เป็นค่าเริ่มต้น) และแจ้งเตือน 20:00 เฉพาะวันที่ยังไม่ได้จด |
+| 🧭 **เมนูเครื่องมือ & Dashboard ใหม่** | เหลือ 6 แท็บหลัก ภาษี/หมวดหมู่/ข้อมูล/ตั้งค่า อยู่ในเมนูเครื่องมือ Dashboard เรียง งบที่ใช้ได้ → ยอดบัญชี → สิ่งที่ต้องจัดการ → ตัวเลขเดือนนี้ และ Ledger มีคอลัมน์/ตัวกรองบัญชี แถวโอนแบบแถวเดียว และยอดคงเหลือสะสมเมื่อเลือกบัญชีเดียว |
 | 🧮 **คำนวณภาษีเงินได้บุคคลธรรมดา (Tax Planner)** | คำนวณอัตราภาษีขั้นบันได 0%-35% พร้อมรองรับค่าลดหย่อนภาษีไทยครบวงจร (ประกันสังคม, กองทุน PVD, RMF, SSF, ThaiESG, Easy E-Receipt, ประกันชีวิต/สุขภาพ, ดอกเบี้ยบ้าน) |
 | 📊 **ศูนย์วิเคราะห์ข้อมูล (Analytics Hub)** | กราฟวงกลม Donut Chart และกราฟแท่งเปรียบเทียบสัดส่วนรายจ่ายแยกหมวดหมู่ |
 | ⚔️ **ระบบเควสต์ & เลเวล (Quests & Growth)** | ภารกิจรายวันเก็บ XP เลื่อนระดับจาก Novice สู่ Grandmaster พร้อมเหรียญความสำเร็จ |

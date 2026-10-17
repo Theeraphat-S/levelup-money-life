@@ -32,10 +32,12 @@ Order: finance features → UX polish → game layer.
 - Close-to-tray, optional launch at login (off by default), and an evening reminder (default 20:00) only on days with nothing logged. Needs `tauri-plugin-notification` and a tray.
   - The reminder runs as a once-a-minute check in the webview, so it needs the app running (window open or hidden in the tray). Tray menu labels are English for now.
 
-## Phase 5 — UX polish
+## Phase 5 — UX polish ✅
 - Move Tax Planner into a Tools menu (6 main tabs). No Accounts tab: balances strip on Dashboard, account filter in Ledger, account management in a modal.
 - Dashboard order: Safe-to-Spend today → account balances → to-do (bills due, categories near limit, balance-check nudge) → compact month KPIs → quests/XP.
 - Ledger: transfers as a single neutral row ("KBank → Card X"), account column and filter, running balance when filtered to one account.
+  - Also done: hard-coded English strings translated, `{{amount}}` labels fixed, Tools menu portalled so it stays on screen at phone width. Checked at 375 / 768 / 1280 px with no horizontal scroll.
+  - Left for Phase 6: default quest titles are stored as English data.
 
 ## Phase 6 — Quests
 - New quests: weekly balance check; finish the month with no category over budget. Nothing else in the game layer changes.

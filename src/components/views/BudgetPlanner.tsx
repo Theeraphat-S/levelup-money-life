@@ -226,7 +226,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
             )}
           </div>
           <span className="font-mono font-bold text-[var(--color-ink)]">
-            Total Allocated: {totalPercent}%
+            {t("ux.totalAllocated", { percent: totalPercent })}
           </span>
         </div>
       </BentoCard>
@@ -282,7 +282,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                 {/* Slider */}
                 <div>
                   <div className="flex items-center justify-between text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
-                    <span>Allocation Slider</span>
+                    <span>{t("ux.allocationSlider")}</span>
                     <span className="font-mono text-[var(--color-ink)] font-bold">{percent}%</span>
                   </div>
                   <input
@@ -322,7 +322,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                   </div>
 
                   <div className="mt-2 flex items-center justify-between text-xs">
-                    <span className="text-[var(--color-ink-soft)]">{consumedPct}% of budget</span>
+                    <span className="text-[var(--color-ink-soft)]">{t("ux.budgetUsed", { amount: consumedPct })}</span>
                     <span
                       className={`font-semibold ${
                         isOver ? "text-[var(--rose-ink)]" : "text-[var(--jade-ink)]"

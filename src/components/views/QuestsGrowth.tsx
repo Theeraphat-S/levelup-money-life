@@ -56,7 +56,7 @@ export const QuestsGrowth: React.FC<QuestsGrowthProps> = ({
         ...prev,
         {
           id: `${quest.id}-${Date.now()}`,
-          text: `+${quest.xp} XP Completed!`,
+          text: t("ux.xpCompleted", { xp: quest.xp }),
           x: e.clientX,
           y: e.clientY,
         },
@@ -139,7 +139,7 @@ export const QuestsGrowth: React.FC<QuestsGrowthProps> = ({
                 </h3>
               </div>
               <span className="font-mono text-xs font-bold text-[var(--jade-ink)] flex items-center gap-1">
-                <span>Level</span>
+                <span>{t("ux.level")}</span>
                 <AnimatedCounter value={gamification.level} duration={0.3} />
               </span>
             </div>

@@ -164,3 +164,30 @@ export function guessAccountForBank(bankName: string | undefined, accounts: Acco
   });
   return match?.id;
 }
+
+/**
+ * Balance after each entry of one account, in date order (same-day entries keep the order they
+ * were logged; lists are stored newest first). Keys are "tx:<id>" and "tr:<id>".
+ */
+export function runningBalances(account: Account, transactions: Transaction[], transfers: Transfer[]): Record<string, number> {
+  type Entry = { key: string; date: string; order: number; delta: number };
+  const entries: Entry[] = [];
+  transactions.forEach((tx, index) => {
+    const own = (tx.accountId ?? DEFAULT_ACCOUNT_ID) === account.id;
+    const counter = tx.counterAccountId === account.id && !own;
+    if (own) entries.push({ key: `tx:${tx.id}`, date: tx.date, order: -index, delta: tx.amount });
+    else if (counter) entries.push({ key: `tx:${tx.id}`, date: tx.date, order: -index, delta: -tx.amount });
+  });
+  transfers.forEach((transfer, index) => {
+    if (transfer.fromAccountId === account.id) entries.push({ key: `tr:${transfer.id}`, date: transfer.date, order: -index - 0.5, delta: -transfer.amount });
+    else if (transfer.toAccountId === account.id) entries.push({ key: `tr:${transfer.id}`, date: transfer.date, order: -index - 0.5, delta: transfer.amount });
+  });
+  entries.sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order);
+  const result: Record<string, number> = {};
+  let balance = account.openingBalance;
+  for (const entry of entries) {
+    balance = Math.round((balance + entry.delta) * 100) / 100;
+    result[entry.key] = balance;
+  }
+  return result;
+}
