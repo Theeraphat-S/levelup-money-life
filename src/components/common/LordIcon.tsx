@@ -19,10 +19,20 @@ export type LordIconName = keyof typeof LOADERS;
 
 type LottieData = Record<string, unknown>;
 
+/** Resolves any CSS colour (rgb, oklch, color-mix…) to 0–1 RGB by letting the browser paint one pixel. */
 function parseRgb(css: string): [number, number, number] {
-  const m = css.match(/[\d.]+/g);
-  if (!m || m.length < 3) return [0.1, 0.35, 0.33];
-  return [Number(m[0]) / 255, Number(m[1]) / 255, Number(m[2]) / 255];
+  try {
+    const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+    if (ctx) {
+      ctx.fillStyle = css;
+      ctx.fillRect(0, 0, 1, 1);
+      const [r, g, bl] = ctx.getImageData(0, 0, 1, 1).data;
+      return [r / 255, g / 255, bl / 255];
+    }
+  } catch {
+    /* no canvas: use the fallback below */
+  }
+  return [0.11, 0.35, 0.33];
 }
 
 /** Lordicon files bake in a fixed navy; repaint every stroke and fill with the theme colour. */
@@ -58,38 +68,52 @@ interface LordIconProps {
 export const LordIcon: React.FC<LordIconProps> = ({ name, size = 64, fallback, loop = false, className, color }) => {
   const reduced = useReducedMotion();
   const host = useRef<HTMLSpanElement>(null);
-  const [theme, setTheme] = useState(0);
+  const finished = useRef(false);
+  const [repaints, setRepaints] = useState(0);
 
   // Dark mode toggles a class on <html>; repaint when it changes.
   useEffect(() => {
-    const observer = new MutationObserver(() => setTheme((n) => n + 1));
+    const observer = new MutationObserver(() => setRepaints((n) => n + 1));
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    const el = host.current;
-    if (reduced || !el) return;
+    if (reduced || !host.current) return;
     let cancelled = false;
     let anim: ReturnType<typeof lottie.loadAnimation> | undefined;
-    LOADERS[name]().then((mod) => {
-      if (cancelled || !host.current) return;
-      const css = color ?? getComputedStyle(host.current).color;
-      anim = lottie.loadAnimation({
-        container: host.current,
-        renderer: "svg",
-        loop,
-        autoplay: true,
-        animationData: recolor(mod.default as unknown as LottieData, parseRgb(css)),
-        rendererSettings: { preserveAspectRatio: "xMidYMid meet" },
+    LOADERS[name]()
+      .then((mod) => {
+        if (cancelled || !host.current) return;
+        const css = color ?? getComputedStyle(host.current).color;
+        // A repaint after the animation already played shows its last frame instead of replaying.
+        const replayed = finished.current && !loop;
+        anim = lottie.loadAnimation({
+          container: host.current,
+          renderer: "svg",
+          loop,
+          autoplay: !replayed,
+          animationData: recolor(mod.default as unknown as LottieData, parseRgb(css)),
+          rendererSettings: { preserveAspectRatio: "xMidYMid meet" },
+        });
+        if (replayed) anim.goToAndStop(anim.totalFrames - 1, true);
+        else anim.addEventListener("complete", () => { finished.current = true; });
+      })
+      .catch(() => {
+        /* chunk failed to load: leave the slot empty rather than throw */
       });
-    });
     return () => {
       cancelled = true;
       anim?.destroy();
     };
-  }, [name, loop, color, reduced, theme]);
+  }, [name, loop, color, reduced, repaints]);
 
-  if (reduced) return <span className={className}>{fallback}</span>;
+  if (reduced) {
+    return (
+      <span className={`inline-flex items-center justify-center ${className ?? ""}`} style={{ width: size, height: size }}>
+        {fallback}
+      </span>
+    );
+  }
   return <span ref={host} aria-hidden className={`inline-block ${className ?? ""}`} style={{ width: size, height: size }} />;
 };

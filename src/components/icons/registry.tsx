@@ -3,16 +3,13 @@ import {
   Book1,
   Bus,
   Cake,
-  Calculator,
   Car,
   Card,
   Coffee,
   Coin,
-  Cup,
   Diamonds,
   Drop,
   Driving,
-  Edit2,
   Flash,
   Game,
   GasStation,
@@ -33,27 +30,26 @@ import {
   ShieldTick,
   ShoppingBag,
   ShoppingCart,
-  StatusUp,
   Strongbox,
   Tag,
-  TaskSquare,
   Teacher,
-  TickCircle,
   VideoPlay,
   Wallet,
-  WalletCheck,
   Weight,
   Wifi,
   Airplane,
 } from "iconsax-react";
 import { fromIconsax, type AppIconComponent, type IconProps } from "./index";
-import { FireGlyph, ShirtGlyph } from "./glyphs";
+import { resolveIconKey, type IconKey } from "../../utils/iconKeys";
+
+export { ICON_KEYS, PICKER_ICON_KEYS, SAVINGS_GOAL_ICON_KEYS, isIconKey, normalizeIconKey, resolveIconKey, type IconKey } from "../../utils/iconKeys";
+import { ShirtGlyph } from "./glyphs";
 
 /**
  * Icons that are stored as data (presets, categories, savings goals, achievements) are saved as these
  * library-free keys. Older data holds emoji or Phosphor component names; `resolveIconKey` maps them here.
  */
-export const ICONS = {
+export const ICONS: Record<IconKey, AppIconComponent> = {
   coffee: fromIconsax(Coffee, "coffee"),
   meal: fromIconsax(Reserve, "meal"),
   drink: fromIconsax(Milk, "drink"),
@@ -93,68 +89,7 @@ export const ICONS = {
   tag: fromIconsax(Tag, "tag"),
   note: fromIconsax(Note, "note"),
   question: fromIconsax(MessageQuestion, "question"),
-  // Achievement-only keys
-  edit: fromIconsax(Edit2, "edit"),
-  streak: fromIconsax(FireGlyph, "streak"),
-  check: fromIconsax(TickCircle, "check"),
-  balance: fromIconsax(WalletCheck, "balance"),
-  tasks: fromIconsax(TaskSquare, "tasks"),
-  calculator: fromIconsax(Calculator, "calculator"),
-  growth: fromIconsax(StatusUp, "growth"),
-  trophy: fromIconsax(Cup, "trophy"),
-} satisfies Record<string, AppIconComponent>;
-
-export type IconKey = keyof typeof ICONS;
-
-/** Shared picker for presets and categories. */
-export const PICKER_ICON_KEYS: readonly IconKey[] = [
-  "coffee", "meal", "drink", "snack", "groceries", "shopping", "clothing", "transit",
-  "car", "ride", "fuel", "airplane", "home", "utilities", "wifi", "mobile",
-  "receipt", "health", "fitness", "personal-care", "learning", "education", "game", "movie",
-  "pet", "baby", "gift", "card", "money", "coins", "wallet", "savings",
-  "shield", "device", "premium", "tools", "tag",
-];
-
-export const SAVINGS_GOAL_ICON_KEYS: readonly IconKey[] = [
-  "shield", "airplane", "device", "home", "car", "gift", "education", "savings",
-];
-
-const LEGACY_ALIASES: Record<string, IconKey> = {
-  // Preset emoji
-  "☕": "coffee", "🍱": "meal", "🍜": "meal", "🍔": "meal", "🥤": "drink", "🍰": "snack", "🍿": "snack",
-  "🚇": "transit", "⛽": "fuel", "🛵": "ride", "🛒": "groceries", "🛍️": "shopping", "🛍": "shopping",
-  "💊": "health", "🏋️": "fitness", "🏋": "fitness", "🧴": "personal-care", "⚡": "utilities", "🏠": "home",
-  "📚": "learning", "🎮": "game", "🎬": "movie", "💳": "card", "💎": "premium", "💰": "money",
-  "🐕": "pet", "📝": "note",
-  // Phosphor component names (categories, savings goals, achievements)
-  Coins: "coins", ForkKnife: "meal", Bus: "transit", House: "home", Heartbeat: "health",
-  BookOpen: "learning", GameController: "game", CreditCard: "card", PiggyBank: "savings",
-  ShoppingBag: "shopping", Coffee: "coffee", TShirt: "clothing", Gift: "gift", PawPrint: "pet",
-  Baby: "baby", Airplane: "airplane", AirplaneTilt: "airplane", DeviceMobile: "mobile",
-  Barbell: "fitness", FilmSlate: "movie", Wrench: "tools", Car: "car", Question: "question",
-  Tag: "tag", ShieldCheck: "shield", Laptop: "device", GraduationCap: "education",
-  PencilSimpleLine: "edit", Fire: "streak", FireSimple: "streak", CheckCircle: "check",
-  Scales: "balance", ListChecks: "tasks", Calculator: "calculator", ChartLineUp: "growth",
-  Trophy: "trophy",
 };
-
-export function isIconKey(value: unknown): value is IconKey {
-  return typeof value === "string" && Object.prototype.hasOwnProperty.call(ICONS, value);
-}
-
-/** Maps a stored icon value (new key, legacy emoji or legacy Phosphor name) to a key, or null if unknown. */
-export function resolveIconKey(value: string | null | undefined): IconKey | null {
-  if (!value) return null;
-  if (isIconKey(value)) return value;
-  const legacy = (key: string): IconKey | undefined =>
-    Object.prototype.hasOwnProperty.call(LEGACY_ALIASES, key) ? LEGACY_ALIASES[key] : undefined;
-  return legacy(value) ?? legacy(value.replace(/️/g, "")) ?? null;
-}
-
-/** Like `resolveIconKey`, but always returns a key so the value can be saved back. */
-export function normalizeIconKey(value: string | null | undefined, fallback: IconKey = "tag"): IconKey {
-  return resolveIconKey(value) ?? fallback;
-}
 
 /**
  * Renders a stored icon value. Unknown values that are not plain names (e.g. an emoji a user

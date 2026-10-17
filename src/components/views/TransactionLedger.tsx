@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from "react";
-import { LordIcon } from "../common/LordIcon";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowDown,
@@ -21,6 +20,7 @@ import { BentoCard } from "../common/BentoCard";
 import { CustomSelect, type CustomSelectOption } from "../common/CustomSelect";
 import { CustomDatePicker, formatShortDate } from "../common/CustomDatePicker";
 import { CategoryIcon } from "../common/CategoryIcon";
+import { LordIcon } from "../common/LordIcon";
 import { useCategories } from "../../hooks/useCategories";
 import { DEFAULT_ACCOUNT_ID, runningBalances } from "../../utils/accounts";
 import {

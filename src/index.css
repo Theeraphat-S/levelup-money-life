@@ -194,14 +194,14 @@
   }
 
   /* Thai stacks vowels and tone marks above and below the line, so it needs more leading. */
-  html[lang="th"] {
+  html:lang(th) {
     --text-xs--line-height: 1.6;
     --text-sm--line-height: 1.6;
     --text-base--line-height: 1.6;
     --text-lg--line-height: 1.55;
   }
 
-  html[lang="th"] body {
+  html:lang(th) body {
     line-height: 1.6;
   }
 

@@ -508,7 +508,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
             <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
               {t("ux.preview")}:
             </span>
-            <span className="font-bold text-[var(--color-ink)] bg-[var(--color-surface-subtle)] border border-[var(--color-line)] px-2.5 py-0.5 rounded-lg">
+            <span className="font-bold text-[var(--color-ink)] bg-[var(--color-surface-subtle)] border border-[var(--color-line)] px-2.5 py-0.5">
               {parsedTx.name}
             </span>
             <span
@@ -583,7 +583,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <PresetIcon icon={item.icon || "note"} category={item.category} size={14} className="h-6 w-6 rounded-lg" />
+                        <PresetIcon icon={item.icon || "note"} category={item.category} size={14} className="h-6 w-6" />
                         <span className="font-semibold truncate">{item.name}</span>
                         <span className="inline-flex items-center gap-1 text-xs text-[var(--color-ink-soft)] font-normal border border-[var(--color-line)] rounded px-1.5 py-0.2 bg-[var(--color-surface)]">
                           <CategoryIcon category={item.category} size={12} />
@@ -625,7 +625,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
             onClick={() => handleTapPreset(preset)}
             className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] hover:bg-[var(--color-surface)] hover:border-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-[var(--color-ink)] shadow-xs transition-all cursor-pointer group"
           >
-            <PresetIcon icon={preset.icon} category={preset.category} size={14} className="h-6 w-6 rounded-lg group-hover:scale-110 transition-transform" />
+            <PresetIcon icon={preset.icon} category={preset.category} size={14} className="h-6 w-6 group-hover:scale-110 transition-transform" />
             <span className="truncate">{preset.name}</span>
             <span className="font-mono text-xs font-bold text-[var(--color-ink-soft)] group-hover:text-[var(--primary-ink)]">
               ฿{preset.amount}

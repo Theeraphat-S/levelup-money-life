@@ -1,4 +1,4 @@
-import { normalizeIconKey } from "../components/icons/registry";
+import { normalizeIconKey } from "../utils/iconKeys";
 import Database from "@tauri-apps/plugin-sql";
 import type { Allocation, Quest, SavingsGoal, TaxProfile, Transaction } from "../types";
 import { getDefaultTaxProfile } from "./taxCalculator";
@@ -402,6 +402,12 @@ export async function getSavingsGoals(): Promise<SavingsGoal[]> {
         await saveSavingsGoal(g);
       }
       return INITIAL_SAVINGS_GOALS;
+    }
+
+    // Goals saved before icon keys hold Phosphor names; convert them and write the key back once.
+    for (const r of rows) {
+      const key = normalizeIconKey(r.icon, "savings");
+      if (key !== r.icon) await db.execute("UPDATE savings_goals SET icon = $1 WHERE id = $2", [key, r.id]);
     }
 
     return rows.map((r) => ({

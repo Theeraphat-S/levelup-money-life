@@ -123,7 +123,7 @@ className="bg-[#FEFFFC] text-[#142D2B]"
 | Metric value | `font-mono text-xl sm:text-2xl font-bold tracking-tight` | Financial numbers |
 | Tab label | `text-xs font-semibold` | Nav tab |
 
-> **Rule:** ห้ามใช้ Inter font — ใช้ Outfit เท่านั้น
+> **Rule:** ห้ามใช้ Inter font — ใช้ Outfit (อังกฤษ/ตัวเลข) และ Anuphan (ไทย) เท่านั้น
 > **Rule:** ตัวเลขการเงิน (บาท, XP, %) ต้องใช้ `font-mono` (tabular-nums) เสมอ
 
 ---
@@ -399,7 +399,8 @@ Import จาก `src/components/icons` เท่านั้น ห้าม im
 
 - `index.tsx` — wrapper ที่แปลง prop `weight` เป็น Iconsax variant และคงชื่อ export เดิม (`Plus`, `Trash`, `CheckCircle` …)
 - `glyphs.tsx` — ไอคอนที่ Iconsax ไม่มี (Check, X, Circle, Fire, TShirt) วาดตาม grid และเส้น 1.5px เดียวกัน
-- `registry.tsx` — ไอคอนที่ **เก็บเป็นข้อมูล** (preset, หมวดหมู่, เป้าหมายออม) เก็บเป็น key เช่น `coffee`, `meal`, `transit` ไม่ผูกกับไลบรารี ค่าเก่า (emoji / ชื่อ Phosphor) ถูกแปลงด้วย `resolveIconKey` ตอนโหลด ถ้าจะเพิ่มไอคอนให้เพิ่มใน `ICONS` และ `PICKER_ICON_KEYS`
+- `utils/iconKeys.ts` — รายการ key, alias ของค่าเก่า (emoji / ชื่อ Phosphor) และ `resolveIconKey` เป็น pure data ไม่ import React ชั้นข้อมูลใช้ไฟล์นี้
+- `registry.tsx` — ไอคอนที่ **เก็บเป็นข้อมูล** (preset, หมวดหมู่, เป้าหมายออม) เก็บเป็น key เช่น `coffee`, `meal`, `transit` ไม่ผูกกับไลบรารี ค่าเก่าถูกแปลงตอนโหลดแล้วเขียนกลับ DB หนึ่งครั้ง ถ้าจะเพิ่มไอคอนให้เพิ่มใน `ICON_KEYS` (utils/iconKeys.ts) และ `ICONS` (registry.tsx) TypeScript จะบังคับให้ทั้งสองตรงกัน
 - ใช้ `<AppIcon name={...} />` เมื่อแสดงค่าที่มาจากข้อมูล และ `<PresetIcon />` สำหรับ preset (สีตามหมวดหมู่)
 
 ### 8.1 Weight Convention

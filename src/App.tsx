@@ -84,6 +84,7 @@ import {
   type CategoryBudgetStatus,
   type CategoryDef,
 } from "./utils/categories";
+import { normalizeIconKey } from "./utils/iconKeys";
 import { getLocalTodayISO } from "./utils/safeToSpend";
 import {
   DEFAULT_ACCOUNT_ID,
@@ -390,7 +391,13 @@ export default function App() {
           await saveAllTransactions(txs).catch((err) => console.error("Account migration failed:", err));
         }
         initAccounts(loadedAccounts, loadedTransfers, savedDefaultAccount);
-        setCategories(mergeWithBuiltIns(await getSetting<CategoryDef[]>("categories", [])));
+        const storedCategories = await getSetting<CategoryDef[]>("categories", []);
+        const loadedCategories = mergeWithBuiltIns(storedCategories);
+        setCategories(loadedCategories);
+        // Icons saved as Phosphor names are now keys; write the converted list back once.
+        if (Array.isArray(storedCategories) && storedCategories.some((c) => c && normalizeIconKey(c.icon) !== c.icon)) {
+          void saveSetting("categories", loadedCategories);
+        }
         const savedDesktop = sanitizeDesktopSettings(await getSetting<unknown>("desktop", null));
         setDesktopSettings(savedDesktop);
         lastReminderRef.current = await getSetting<string | null>("lastReminderDate", null);

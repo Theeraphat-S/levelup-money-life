@@ -1,6 +1,7 @@
 import type { AutocompleteItem, PresetItem, Transaction, TransactionCategory } from "../types";
 import { getSetting, saveSetting } from "../services/db";
-import { normalizeIconKey } from "../components/icons/registry";
+import { normalizeIconKey } from "./iconKeys";
+import { BUILT_IN_CATEGORIES } from "./categories";
 
 export const DEFAULT_PRESETS: PresetItem[] = [
   {
@@ -59,31 +60,31 @@ export const DEFAULT_PRESETS: PresetItem[] = [
   },
 ];
 
-export const CATEGORY_DEFAULT_ICONS: Record<string, string> = {
-  Food: "meal",
-  Transport: "transit",
-  Home: "home",
-  Health: "health",
-  Learning: "learning",
-  Fun: "game",
-  Debt: "card",
-  Savings: "premium",
-  Income: "money",
-};
+/** Icon a preset gets when it is auto-created from a category; same icons the categories use. */
+export const CATEGORY_DEFAULT_ICONS: Record<string, string> = Object.fromEntries(
+  BUILT_IN_CATEGORIES.map((c) => [c.id, c.icon]),
+);
 
 /**
  * Load presets from persistent storage or return defaults
  */
 export async function getStoredPresets(): Promise<PresetItem[]> {
-  let presets: PresetItem[];
+  let stored: unknown;
   try {
-    presets = await getSetting<PresetItem[]>("presets", DEFAULT_PRESETS);
+    stored = await getSetting<PresetItem[]>("presets", DEFAULT_PRESETS);
   } catch {
-    const local = localStorage.getItem("levelup.presets");
-    presets = local ? JSON.parse(local) : DEFAULT_PRESETS;
+    try {
+      const local = localStorage.getItem("levelup.presets");
+      stored = local ? JSON.parse(local) : DEFAULT_PRESETS;
+    } catch {
+      stored = DEFAULT_PRESETS;
+    }
   }
-  // Presets saved before icon keys held emoji; map them so the next save stores keys.
-  return presets.map((p) => ({ ...p, icon: normalizeIconKey(p.icon, "note") }));
+  const presets = Array.isArray(stored) ? (stored as PresetItem[]) : DEFAULT_PRESETS;
+  // Presets saved before icon keys hold emoji; convert them and write the result back once.
+  const migrated = presets.map((p) => ({ ...p, icon: normalizeIconKey(p.icon, "note") }));
+  if (migrated.some((p, i) => p.icon !== presets[i].icon)) void saveStoredPresets(migrated);
+  return migrated;
 }
 
 /**

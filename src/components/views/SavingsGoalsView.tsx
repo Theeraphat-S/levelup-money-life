@@ -69,6 +69,7 @@ interface SavingsGoalsViewProps {
 
 export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
   goals,
+  isLoading,
   totalSaved,
   activeGoalsCount,
   completedGoalsCount,
@@ -365,7 +366,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
         </BentoCard>
       </div>
 
-      {goals.length === 0 && (
+      {goals.length === 0 && !isLoading && (
         <div className="py-10 text-center">
           <LordIcon name="piggy-bank" size={88} className="mx-auto text-[var(--primary)]" fallback={<PiggyBank size={48} weight="duotone" />} />
           <p className="mt-2 text-xs font-semibold text-[var(--color-ink-soft)]">{t("savings.emptyGoals")}</p>

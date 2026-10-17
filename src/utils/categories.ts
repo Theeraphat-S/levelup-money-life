@@ -1,5 +1,5 @@
 import type { BudgetBucket, Transaction } from "../types";
-import { normalizeIconKey } from "../components/icons/registry";
+import { normalizeIconKey } from "./iconKeys";
 
 export type CategoryDef = {
   id: string;

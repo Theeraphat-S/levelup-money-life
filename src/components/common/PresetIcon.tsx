@@ -13,7 +13,7 @@ export const PresetIcon: React.FC<{ icon: string; category: string; size?: numbe
   const tint = color(category);
   return (
     <span
-      className={`flex shrink-0 items-center justify-center rounded-xl ${className ?? ""}`}
+      className={`flex shrink-0 items-center justify-center rounded-full ${className ?? ""}`}
       style={{ backgroundColor: `color-mix(in srgb, ${tint} 14%, transparent)` }}
       aria-hidden
     >
