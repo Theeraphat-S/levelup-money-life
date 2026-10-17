@@ -9,7 +9,7 @@ import {
   Warning,
   X,
   CheckCircle,
-} from "@phosphor-icons/react";
+} from "./icons";
 import { useTranslation } from "react-i18next";
 import {
   exportBackupJSON,

@@ -19,7 +19,7 @@ import {
   Warning,
   WarningCircle,
   X,
-} from "@phosphor-icons/react";
+} from "./icons";
 import { useTranslation } from "react-i18next";
 import { CustomSelect } from "./common/CustomSelect";
 import { CategoryPicker } from "./common/CategoryPicker";

@@ -8,7 +8,7 @@ import {
   Plus,
   Trash,
   X,
-} from "@phosphor-icons/react";
+} from "./icons";
 import { useTranslation } from "react-i18next";
 import {
   type Account,

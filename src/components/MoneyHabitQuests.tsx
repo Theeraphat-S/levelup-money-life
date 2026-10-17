@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle, Circle, Scales, Sparkle, Target } from "@phosphor-icons/react";
+import { CheckCircle, Circle, Scales, Sparkle, Target } from "./icons";
 import { useTranslation } from "react-i18next";
 import { useCategories } from "../hooks/useCategories";
 import type { Account, Transaction } from "../types";

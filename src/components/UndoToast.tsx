@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { SPRING } from "../constants/motion";
-import { ArrowUUpLeft, CheckCircle, Sparkle, X } from "@phosphor-icons/react";
+import { ArrowUUpLeft, CheckCircle, Sparkle, X } from "./icons";
 import { useTranslation } from "react-i18next";
 import { useCategories } from "../hooks/useCategories";
 import type { Transaction } from "../types";

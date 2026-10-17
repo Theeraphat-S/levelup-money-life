@@ -15,7 +15,7 @@ import {
   Archive,
   Scales,
   ArrowCounterClockwise,
-} from "@phosphor-icons/react";
+} from "./icons";
 import { useTranslation } from "react-i18next";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { getLocalTodayISO } from "../utils/safeToSpend";

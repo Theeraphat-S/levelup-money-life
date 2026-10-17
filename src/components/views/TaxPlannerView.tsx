@@ -13,7 +13,7 @@ import {
   HeartStraight,
   TreeEvergreen,
   Star,
-} from "@phosphor-icons/react";
+} from "../icons";
 import { useTranslation } from "react-i18next";
 import { BentoCard } from "../common/BentoCard";
 import { MetricTile } from "../common/MetricTile";

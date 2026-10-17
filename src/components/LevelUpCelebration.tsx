@@ -1,7 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { SPRING } from "../constants/motion";
-import { Sparkle, Trophy } from "@phosphor-icons/react";
+import { Sparkle, Trophy } from "./icons";
 import { useTranslation } from "react-i18next";
 
 interface LevelUpCelebrationProps {

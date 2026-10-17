@@ -8,7 +8,7 @@ import {
   CaretDown,
   Sparkle,
   X,
-} from "@phosphor-icons/react";
+} from "../icons";
 import { useTranslation } from "react-i18next";
 
 /** "17 ต.ค. 2026" / "17 Oct 2026" — the same format the picker shows, for read-only dates. */

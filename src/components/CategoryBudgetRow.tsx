@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Check, PencilSimple, WarningCircle, X } from "@phosphor-icons/react";
+import { Check, PencilSimple, WarningCircle, X } from "./icons";
 import { useTranslation } from "react-i18next";
 import { useCategories } from "../hooks/useCategories";
 import { LOCKED_CATEGORY_IDS, budgetLevel } from "../utils/categories";

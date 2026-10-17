@@ -13,7 +13,7 @@ import {
   Plus,
   ShieldCheck,
   Trash,
-} from "@phosphor-icons/react";
+} from "../icons";
 import { useTranslation } from "react-i18next";
 import { BentoCard } from "../common/BentoCard";
 import { CustomSelect, type CustomSelectOption } from "../common/CustomSelect";

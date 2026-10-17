@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { AnimatePresence, motion, MotionConfig, useReducedMotion, type HTMLMotionProps } from "motion/react";
 import { SPRING, DURATION, easeOut } from "./constants/motion";
-import { CalendarDots, Sparkle } from "@phosphor-icons/react";
+import { CalendarDots, Sparkle } from "./components/icons";
 import { useTranslation } from "react-i18next";
 
 // Components & Modals

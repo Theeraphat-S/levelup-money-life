@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useId } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { SPRING } from "../../constants/motion";
-import { CaretDown, Check } from "@phosphor-icons/react";
+import { CaretDown, Check } from "../icons";
 
 export interface CustomSelectOption {
   value: string;

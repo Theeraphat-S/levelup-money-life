@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Calculator, CaretDown, Database, GearSix, Tag, Toolbox } from "@phosphor-icons/react";
+import { Calculator, CaretDown, Database, GearSix, Tag, Toolbox } from "./icons";
 import { useTranslation } from "react-i18next";
 
 interface ToolsMenuProps {

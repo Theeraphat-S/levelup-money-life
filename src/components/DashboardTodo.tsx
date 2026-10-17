@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { CalendarDots, CheckCircle, Coins, CreditCard, ListChecks, Scales, WarningCircle } from "@phosphor-icons/react";
+import { CalendarDots, CheckCircle, Coins, CreditCard, ListChecks, Scales, WarningCircle } from "./icons";
 import { useTranslation } from "react-i18next";
 import { useCategories } from "../hooks/useCategories";
 import type { Account, RecurringBill, Transaction, ViewTab } from "../types";

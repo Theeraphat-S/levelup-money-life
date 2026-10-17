@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { ArrowRight, Bank } from "@phosphor-icons/react";
+import { ArrowRight, Bank } from "./icons";
 import { useTranslation } from "react-i18next";
 import type { Account, Transaction, Transfer } from "../types";
 import { ACCOUNT_TYPE_ORDER, computeAccountBalances, computeNetWorth } from "../utils/accounts";

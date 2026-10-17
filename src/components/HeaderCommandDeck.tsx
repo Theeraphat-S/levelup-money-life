@@ -11,7 +11,7 @@ import {
   Plus,
   Receipt,
   Sun,
-} from "@phosphor-icons/react";
+} from "./icons";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "./AppLogo";
 import { AnimatedCounter } from "./common/AnimatedCounter";

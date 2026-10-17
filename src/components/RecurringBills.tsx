@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowRight, CalendarDots, CheckCircle, CreditCard, PencilSimple, Plus, Receipt, Trash, X } from "@phosphor-icons/react";
+import { ArrowRight, CalendarDots, CheckCircle, CreditCard, PencilSimple, Plus, Receipt, Trash, X } from "./icons";
 import { useTranslation } from "react-i18next";
 import { useCategories } from "../hooks/useCategories";
 import { useDialogFocus } from "../hooks/useDialogFocus";

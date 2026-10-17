@@ -21,7 +21,7 @@ import {
   Trash,
   WarningCircle,
   X,
-} from "@phosphor-icons/react";
+} from "../icons";
 import { useTranslation } from "react-i18next";
 import { BentoCard } from "../common/BentoCard";
 import { TactileButton } from "../common/TactileButton";

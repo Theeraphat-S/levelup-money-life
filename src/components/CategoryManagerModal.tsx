@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { SPRING } from "../constants/motion";
-import { Eye, EyeSlash, PencilSimple, Plus, Trash, X } from "@phosphor-icons/react";
+import { Eye, EyeSlash, PencilSimple, Plus, Trash, X } from "./icons";
 import { useTranslation } from "react-i18next";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useCategories } from "../hooks/useCategories";

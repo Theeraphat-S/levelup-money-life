@@ -24,7 +24,7 @@ import {
   Tag,
   Wrench,
   type IconProps,
-} from "@phosphor-icons/react";
+} from "../icons";
 import { useCategories } from "../../hooks/useCategories";
 
 export const CATEGORY_ICONS: Record<string, React.ComponentType<IconProps>> = {
