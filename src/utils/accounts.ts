@@ -39,18 +39,25 @@ export function assignMissingAccounts(transactions: Transaction[], accounts: Acc
   return changed ? next : transactions;
 }
 
+/** Balances per account; with `asOf` (YYYY-MM-DD) only entries on or before that date count. */
 export function computeAccountBalances(
   accounts: Account[],
   transactions: Transaction[],
-  transfers: Transfer[]
+  transfers: Transfer[],
+  asOf?: string
 ): Record<string, number> {
   const balances: Record<string, number> = {};
   for (const account of accounts) balances[account.id] = account.openingBalance;
   for (const tx of transactions) {
+    if (asOf && tx.date > asOf) continue;
     const id = tx.accountId ?? DEFAULT_ACCOUNT_ID;
     if (id in balances) balances[id] += tx.amount;
+    if (tx.counterAccountId && tx.counterAccountId !== id && tx.counterAccountId in balances) {
+      balances[tx.counterAccountId] -= tx.amount;
+    }
   }
   for (const transfer of transfers) {
+    if (asOf && transfer.date > asOf) continue;
     if (transfer.fromAccountId in balances) balances[transfer.fromAccountId] -= transfer.amount;
     if (transfer.toAccountId in balances) balances[transfer.toAccountId] += transfer.amount;
   }
@@ -75,7 +82,7 @@ export function validateTransfer(transfer: Omit<Transfer, "id">, accounts: Accou
 
 export function isAccountReferenced(accountId: string, transactions: Transaction[], transfers: Transfer[]): boolean {
   return (
-    transactions.some((tx) => (tx.accountId ?? DEFAULT_ACCOUNT_ID) === accountId) ||
+    transactions.some((tx) => (tx.accountId ?? DEFAULT_ACCOUNT_ID) === accountId || tx.counterAccountId === accountId) ||
     transfers.some((t) => t.fromAccountId === accountId || t.toAccountId === accountId)
   );
 }
@@ -127,4 +134,33 @@ export function restoreAccountSnapshot(
   );
   const defaultAccountId = resolveDefaultAccountId(accounts, backup.defaultAccountId ?? current.defaultAccountId);
   return { accounts, transfers, defaultAccountId, transactions: assignMissingAccounts(backup.transactions, accounts, defaultAccountId) };
+}
+
+// Keywords per provider, matched against the slip's detected bank and the user's account names/aliases
+const BANK_KEYWORDS: string[][] = [
+  ["kbank", "kasikorn", "กสิกร", "k plus", "kplus"],
+  ["scb", "ไทยพาณิชย์"],
+  ["ktb", "krungthai", "กรุงไทย"],
+  ["bbl", "bangkok bank", "กรุงเทพ", "bualuang", "บัวหลวง"],
+  ["krungsri", "กรุงศรี"],
+  ["gsb", "ออมสิน", "mymo"],
+  ["ttb", "ทีทีบี", "ทหารไทย", "ธนชาต"],
+  ["truemoney", "ทรูมันนี่"],
+  ["shopeepay", "ช้อปปี้เพย์"],
+  ["line pay", "linepay", "ไลน์เพย์"],
+];
+
+/** Guesses which of the user's non-card accounts paid an outgoing slip from the detected bank name. */
+export function guessAccountForBank(bankName: string | undefined, accounts: Account[]): string | undefined {
+  if (!bankName) return undefined;
+  const detected = bankName.toLowerCase();
+  const group = BANK_KEYWORDS.find((keywords) => keywords.some((kw) => detected.includes(kw)));
+  if (!group) return undefined;
+  const match = accounts.find((account) => {
+    if (account.archived || account.type === "credit") return false;
+    const name = account.name.toLowerCase();
+    const alias = normalizeAlias(account.alias);
+    return group.some((kw) => name.includes(kw) || alias === kw.replace(/\s+/g, ""));
+  });
+  return match?.id;
 }

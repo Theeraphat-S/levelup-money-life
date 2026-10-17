@@ -61,6 +61,8 @@ import {
 import type { BackupData } from "./services/exportImport";
 import type { Account, RecurringBill, RecurringBillPayment, Transaction, Transfer, ViewTab } from "./types";
 import { recordBillPayment } from "./utils/recurringBills";
+import { getCardBills } from "./utils/cardBills";
+import { getLocalTodayISO } from "./utils/safeToSpend";
 import {
   DEFAULT_ACCOUNT_ID,
   assignMissingAccounts,
@@ -211,6 +213,12 @@ export default function App() {
     },
   });
 
+  // Credit card bills due in the selected month (paid by transfer, outside Safe-to-Spend)
+  const cardBills = useMemo(
+    () => getCardBills(accounts, activeMonth, getLocalTodayISO(), transactions, transfers),
+    [accounts, activeMonth, transactions, transfers]
+  );
+
   // Evaluate Active Achievements
   const { allAchievements } = useMemo(() => {
     return evaluateAchievements(
@@ -327,7 +335,7 @@ export default function App() {
     persistRecurringBills(nextBills);
   };
 
-  const handlePayRecurringBill = async (bill: RecurringBill, payment: RecurringBillPayment) => {
+  const handlePayRecurringBill = async (bill: RecurringBill, payment: RecurringBillPayment, accountId?: string) => {
     const transaction: Transaction = {
       id: payment.transactionId,
       name: bill.name,
@@ -335,6 +343,7 @@ export default function App() {
       date: payment.paidOn,
       category: bill.category,
       cleared: true,
+      ...(accountId ? { accountId } : {}),
     };
     await saveQuickTransaction(transaction, {
       onAwardXp: addXp,
@@ -510,6 +519,7 @@ export default function App() {
           presets={presets}
           setPresets={setPresets}
           onLogTransaction={handleLogQuickTransaction}
+          accounts={accounts}
           onConfigureBudget={() => setActiveTab("budget")}
         />}
 
@@ -529,6 +539,7 @@ export default function App() {
                 onOpenIncome={() => { setQuickAddType("income"); setIsQuickAddOpen(true); }}
                 savingsGoals={savingsGoals}
                 recurringBills={recurringBills}
+                cardBills={cardBills}
               />
             </motion.div>
           )}
@@ -556,6 +567,10 @@ export default function App() {
                 recurringBills={recurringBills}
                 onSaveBills={handleSaveRecurringBills}
                 onPayBill={handlePayRecurringBill}
+                cardBills={cardBills}
+                accounts={accounts}
+                defaultAccountId={defaultAccountId}
+                onPayCard={(transfer) => { addTransfer(transfer); showToast(t("accounts.transferSaved")); }}
               />
             </motion.div>
           )}
@@ -577,6 +592,7 @@ export default function App() {
                 onWithdraw={handleWithdrawFromSavingsGoal}
                 transactions={transactions}
                 activeMonth={activeMonth}
+                accounts={accounts}
               />
             </motion.div>
           )}
@@ -643,6 +659,7 @@ export default function App() {
           onSave={handleSaveSlipTransaction}
           onSaveBatch={handleSaveBatchSlipTransactions}
           initialFiles={slipInitialFiles}
+          accounts={accounts}
         />
 
         <DataManagerModal

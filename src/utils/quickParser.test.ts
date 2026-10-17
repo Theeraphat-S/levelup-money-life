@@ -415,3 +415,29 @@ describe("quickParser", () => {
     });
   });
 });
+
+describe("account aliases", () => {
+  const options = { accountAliases: ["kb", "card"] };
+
+  it("pulls a known @alias out of the name and amount", () => {
+    const parsed = parseQuickInput("กะเพรา 65 @kb", options);
+    expect(parsed).toMatchObject({ isValid: true, name: "กะเพรา", amount: -65, accountAlias: "kb" });
+  });
+
+  it("matches aliases case-insensitively and anywhere in the line", () => {
+    expect(parseQuickInput("@CARD shopee 890", options)).toMatchObject({ accountAlias: "card", amount: -890, name: "shopee" });
+  });
+
+  it("still treats @category tags as categories", () => {
+    expect(parseQuickInput("ยาแก้ไอ 120 @food", options)).toMatchObject({ isValid: true, category: "Food", accountAlias: undefined });
+  });
+
+  it("rejects an unknown @alias instead of keeping it in the name", () => {
+    const parsed = parseQuickInput("ข้าว 50 @kbank", options);
+    expect(parsed).toMatchObject({ isValid: false, unknownAccountAlias: "kbank", name: "ข้าว" });
+  });
+
+  it("keeps old behaviour when no aliases are configured", () => {
+    expect(parseQuickInput("ข้าว 50 @kbank")).toMatchObject({ isValid: true, unknownAccountAlias: undefined });
+  });
+});

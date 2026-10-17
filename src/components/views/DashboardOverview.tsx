@@ -20,6 +20,7 @@ import { MetricTile } from "../common/MetricTile";
 import { TactileButton } from "../common/TactileButton";
 import { FloatingReward, type FloatingRewardItem } from "../common/FloatingReward";
 import { UpcomingBillsSummary } from "../RecurringBills";
+import type { CardBillOccurrence } from "../../utils/cardBills";
 import { calculateDailySafeToSpend, getLocalTodayISO } from "../../utils/safeToSpend";
 import {
   CATEGORY_BUCKET_MAP,
@@ -46,6 +47,7 @@ interface DashboardOverviewProps {
   onOpenIncome?: () => void;
   savingsGoals?: SavingsGoal[];
   recurringBills: RecurringBill[];
+  cardBills?: CardBillOccurrence[];
 }
 
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
@@ -60,6 +62,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onOpenIncome,
   savingsGoals,
   recurringBills,
+  cardBills,
 }) => {
   const { t } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
@@ -218,7 +221,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
           <p className="mt-3 text-[11px] leading-relaxed text-[var(--color-ink-faint)]">{t("ux.budgetExplanation", { amount: thb.format(income) })}</p>
         </BentoCard>
-        <div className="lg:col-span-5"><UpcomingBillsSummary bills={recurringBills} transactions={transactions} activeMonth={activeMonth} setActiveTab={setActiveTab} /></div>
+        <div className="lg:col-span-5"><UpcomingBillsSummary bills={recurringBills} transactions={transactions} activeMonth={activeMonth} setActiveTab={setActiveTab} cardBills={cardBills} /></div>
       </div>
 
       {/* Bento Row 1: Budget Health & Daily Quests */}

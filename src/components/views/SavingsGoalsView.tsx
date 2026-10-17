@@ -27,7 +27,7 @@ import { BentoCard } from "../common/BentoCard";
 import { TactileButton } from "../common/TactileButton";
 import { AnimatedCounter } from "../common/AnimatedCounter";
 import { FloatingReward, type FloatingRewardItem } from "../common/FloatingReward";
-import type { SavingsGoal, SavingsGoalCategory, Transaction } from "../../types";
+import type { Account, SavingsGoal, SavingsGoalCategory, Transaction } from "../../types";
 import {
   calculateEmergencyFundTarget,
   calculateSavingsPace,
@@ -73,6 +73,7 @@ interface SavingsGoalsViewProps {
   onWithdraw: (goalId: string, amount: number, note?: string) => Promise<void>;
   transactions: Transaction[];
   activeMonth: string;
+  accounts?: Account[];
 }
 
 export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
@@ -87,8 +88,10 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
   onWithdraw,
   transactions,
   activeMonth,
+  accounts = [],
 }) => {
   const { t } = useTranslation();
+  const activeAccounts = accounts.filter((a) => !a.archived);
   const shouldReduceMotion = useReducedMotion();
 
   // Floating rewards queue for milestone XP pops
@@ -115,6 +118,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
   const [formTargetAmount, setFormTargetAmount] = useState<number>(50000);
   const [formTargetDate, setFormTargetDate] = useState<string>("");
   const [formIcon, setFormIcon] = useState<string>("ShieldCheck");
+  const [formAccountId, setFormAccountId] = useState<string>("");
 
   // Calculate monthly required pace across all active goals
   const totalRequiredMonthlyPace = useMemo(() => {
@@ -155,6 +159,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
     setFormTargetAmount(30000);
     setFormTargetDate("");
     setFormIcon("PiggyBank");
+    setFormAccountId("");
     setIsGoalModalOpen(true);
   };
 
@@ -166,6 +171,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
     setFormTargetAmount(goal.targetAmount);
     setFormTargetDate(goal.targetDate || "");
     setFormIcon(goal.icon || "PiggyBank");
+    setFormAccountId(goal.accountId ?? "");
     setIsGoalModalOpen(true);
   };
 
@@ -182,6 +188,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
         targetAmount: formTargetAmount,
         targetDate: formTargetDate ? formTargetDate : undefined,
         icon: formIcon,
+        accountId: formAccountId || undefined,
       });
     } else {
       await onCreateGoal({
@@ -190,6 +197,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
         targetAmount: formTargetAmount,
         targetDate: formTargetDate ? formTargetDate : undefined,
         icon: formIcon,
+        ...(formAccountId ? { accountId: formAccountId } : {}),
       });
     }
 
@@ -842,6 +850,27 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                     className="w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3.5 py-2 text-xs text-[var(--color-ink)] focus:outline-hidden"
                   />
                 </div>
+
+                {activeAccounts.length > 1 && (
+                  <div>
+                    <label htmlFor="goal-account" className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
+                      {t("savings.accountLabel")}
+                    </label>
+                    <select
+                      id="goal-account"
+                      value={formAccountId}
+                      onChange={(e) => setFormAccountId(e.target.value)}
+                      aria-describedby="goal-account-hint"
+                      className="w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3.5 py-2 text-xs text-[var(--color-ink)] focus:outline-hidden"
+                    >
+                      <option value="">{t("savings.accountNone")}</option>
+                      {activeAccounts.filter((a) => a.type !== "credit").map((a) => (
+                        <option key={a.id} value={a.id}>{a.name} · {t(`accounts.types.${a.type}`)}</option>
+                      ))}
+                    </select>
+                    <p id="goal-account-hint" className="mt-1 text-xs text-[var(--color-ink-soft)]">{t("savings.accountHint")}</p>
+                  </div>
+                )}
 
                 <div className="mt-6 flex items-center justify-end gap-2.5 pt-3 border-t border-[var(--color-line)]">
                   <TactileButton

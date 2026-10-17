@@ -24,6 +24,8 @@ import {
   computeAccountBalances,
   computeNetWorth,
   isAccountReferenced,
+  isAliasTaken,
+  normalizeAlias,
   validateTransfer,
 } from "../utils/accounts";
 import { CustomSelect } from "./common/CustomSelect";
@@ -54,9 +56,25 @@ interface AccountManagerModalProps {
   onDeleteTransfer: (id: string) => void;
 }
 
-type AccountDraft = { id?: string; name: string; type: AccountType; opening: string };
+type AccountDraft = {
+  id?: string;
+  name: string;
+  type: AccountType;
+  opening: string;
+  alias: string;
+  statementDay: string;
+  dueDay: string;
+};
 
-const EMPTY_DRAFT: AccountDraft = { name: "", type: "bank", opening: "" };
+const EMPTY_DRAFT: AccountDraft = { name: "", type: "bank", opening: "", alias: "", statementDay: "", dueDay: "" };
+
+const ALIAS_PATTERN = /^[\w\u0E00-\u0E7F-]+$/;
+
+function parseDay(value: string): number | undefined | null {
+  if (!value.trim()) return undefined;
+  const day = Number(value);
+  return Number.isInteger(day) && day >= 1 && day <= 31 ? day : null;
+}
 
 const inputClass =
   "w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--primary)] shadow-xs";
@@ -144,6 +162,9 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({
       name: account.name,
       type: account.type,
       opening: String(account.type === "credit" ? -account.openingBalance : account.openingBalance),
+      alias: account.alias ?? "",
+      statementDay: account.statementDay ? String(account.statementDay) : "",
+      dueDay: account.dueDay ? String(account.dueDay) : "",
     });
   };
 
@@ -159,15 +180,34 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({
       setFormError(t("accounts.errors.invalidAmount"));
       return;
     }
+    const alias = normalizeAlias(draft.alias);
+    if (alias && !ALIAS_PATTERN.test(alias)) {
+      setFormError(t("accounts.aliasInvalid"));
+      return;
+    }
+    if (isAliasTaken(alias, accounts, draft.id)) {
+      setFormError(t("accounts.aliasTaken"));
+      return;
+    }
+    const isCredit = draft.type === "credit";
+    const statementDay = isCredit ? parseDay(draft.statementDay) : undefined;
+    const dueDay = isCredit ? parseDay(draft.dueDay) : undefined;
+    if (statementDay === null || dueDay === null || (statementDay === undefined) !== (dueDay === undefined)) {
+      setFormError(t("accounts.errors.cycleDays"));
+      return;
+    }
     // Credit cards are entered as an amount owed and stored as a negative balance
-    const openingBalance = draft.type === "credit" ? -Math.abs(raw) : raw;
+    const openingBalance = isCredit ? -Math.abs(raw) : raw;
     const existing = accounts.find((a) => a.id === draft.id);
     onSaveAccount({
-      ...(existing ?? { archived: false, createdAt: getLocalTodayISO() }),
+      archived: existing?.archived ?? false,
+      createdAt: existing?.createdAt ?? getLocalTodayISO(),
       id: existing?.id ?? crypto.randomUUID(),
       name: draft.name,
       type: draft.type,
       openingBalance,
+      alias,
+      ...(statementDay && dueDay ? { statementDay, dueDay } : {}),
     });
     setDraft(null);
   };
@@ -327,7 +367,10 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-[var(--color-ink-soft)]">{t(`accounts.types.${account.type}`)}</div>
+                            <div className="text-xs text-[var(--color-ink-soft)]">
+                              {t(`accounts.types.${account.type}`)}
+                              {account.alias && <span className="font-mono"> · @{account.alias}</span>}
+                            </div>
                           </div>
                         </div>
 
@@ -476,6 +519,56 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({
                       <p id="account-opening-hint" className="mt-1 text-xs text-[var(--color-ink-soft)]">{t("accounts.openingHint")}</p>
                     </div>
                   </div>
+
+                  <div>
+                    <label htmlFor="account-alias" className={labelClass}>{t("accounts.alias")}</label>
+                    <div className="flex items-center rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-3 shadow-xs focus-within:border-[var(--primary)] sm:max-w-[50%]">
+                      <span className="font-mono text-sm text-[var(--color-ink-soft)]" aria-hidden>@</span>
+                      <input
+                        id="account-alias"
+                        type="text"
+                        maxLength={16}
+                        value={draft.alias}
+                        placeholder="kb"
+                        onChange={(e) => setDraft({ ...draft, alias: e.target.value })}
+                        className="w-full bg-transparent px-1 py-2 font-mono text-sm text-[var(--color-ink)] outline-none"
+                        aria-describedby="account-alias-hint"
+                      />
+                    </div>
+                    <p id="account-alias-hint" className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                      {t("accounts.aliasHint", { alias: normalizeAlias(draft.alias) ?? "kb" })}
+                    </p>
+                  </div>
+
+                  {draft.type === "credit" && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="account-statement-day" className={labelClass}>{t("accounts.statementDay")}</label>
+                        <input
+                          id="account-statement-day"
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={draft.statementDay}
+                          onChange={(e) => setDraft({ ...draft, statementDay: e.target.value })}
+                          className={`${inputClass} font-mono`}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="account-due-day" className={labelClass}>{t("accounts.dueDay")}</label>
+                        <input
+                          id="account-due-day"
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={draft.dueDay}
+                          onChange={(e) => setDraft({ ...draft, dueDay: e.target.value })}
+                          className={`${inputClass} font-mono`}
+                        />
+                      </div>
+                      <p className="col-span-2 -mt-1 text-xs text-[var(--color-ink-soft)]">{t("accounts.cycleHint")}</p>
+                    </div>
+                  )}
 
                   {formError && <p role="alert" className="text-xs font-semibold text-[var(--rose-ink)]">{formError}</p>}
 

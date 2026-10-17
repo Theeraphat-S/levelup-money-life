@@ -18,6 +18,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { BentoCard } from "../common/BentoCard";
 import { RecurringBillsManager } from "../RecurringBills";
+import type { CardBillOccurrence } from "../../utils/cardBills";
 import {
   BUCKET_COLORS,
   CATEGORY_BUCKET_MAP,
@@ -27,6 +28,8 @@ import {
   type RecurringBill,
   type RecurringBillPayment,
   type Transaction,
+  type Account,
+  type Transfer,
 } from "../../types";
 
 const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
@@ -40,7 +43,11 @@ interface BudgetPlannerProps {
   activeMonth: string;
   recurringBills: RecurringBill[];
   onSaveBills: (bills: RecurringBill[]) => void;
-  onPayBill: (bill: RecurringBill, payment: RecurringBillPayment) => Promise<void>;
+  onPayBill: (bill: RecurringBill, payment: RecurringBillPayment, accountId?: string) => Promise<void>;
+  cardBills?: CardBillOccurrence[];
+  accounts?: Account[];
+  defaultAccountId?: string;
+  onPayCard?: (transfer: Transfer) => void;
 }
 
 export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
@@ -53,6 +60,10 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
   recurringBills,
   onSaveBills,
   onPayBill,
+  cardBills,
+  accounts,
+  defaultAccountId,
+  onPayCard,
 }) => {
   const { t } = useTranslation();
 
@@ -343,6 +354,10 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
             activeMonth={activeMonth}
             onSaveBills={onSaveBills}
             onPayBill={onPayBill}
+            cardBills={cardBills}
+            accounts={accounts}
+            defaultAccountId={defaultAccountId}
+            onPayCard={onPayCard}
           />
         </div>
       </BentoCard>

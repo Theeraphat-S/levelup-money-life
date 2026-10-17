@@ -55,7 +55,23 @@ describe("RecurringBillsManager", () => {
       paidOn: today,
       amount: 12100,
       transactionId: expect.any(String),
-    })));
+    }), undefined));
+  });
+
+  it("records a card bill payment as a transfer from a non-card account", async () => {
+    await i18n.changeLanguage("en");
+    const today = getLocalTodayISO();
+    const bank = { id: "kb", name: "KBank", type: "bank" as const, openingBalance: 0, archived: false, createdAt: "2026-01-01" };
+    const card = { id: "ktc", name: "KTC", type: "credit" as const, openingBalance: 0, archived: false, createdAt: "2026-01-01", statementDay: 1, dueDay: 28 };
+    const cardBill = { account: card, statementDate: `${today.slice(0, 7)}-01`, dueDate: `${today.slice(0, 7)}-28`, statementAmount: 1500, paidAmount: 0, remaining: 1500, overdue: false };
+    const onPayCard = vi.fn();
+    render(<RecurringBillsManager bills={[]} transactions={[]} activeMonth={today.slice(0, 7)} onSaveBills={vi.fn()} onPayBill={vi.fn()} cardBills={[cardBill]} accounts={[card, bank]} defaultAccountId="ktc" onPayCard={onPayCard} />);
+
+    expect(screen.getByText("Pay KTC")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Pay card" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm payment" }));
+
+    expect(onPayCard).toHaveBeenCalledWith(expect.objectContaining({ fromAccountId: "kb", toAccountId: "ktc", amount: 1500, date: today }));
   });
 
   it("shows due bills on the Dashboard and opens Budget management", async () => {

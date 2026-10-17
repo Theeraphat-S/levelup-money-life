@@ -5,6 +5,7 @@ import {
   assignMissingAccounts,
   computeAccountBalances,
   computeNetWorth,
+  guessAccountForBank,
   ensureAccounts,
   isAccountReferenced,
   isAliasTaken,
@@ -58,6 +59,15 @@ describe("accounts", () => {
   it("counts legacy rows without accountId toward the default account", () => {
     const main = { ...bank, id: DEFAULT_ACCOUNT_ID, openingBalance: 0 };
     expect(computeAccountBalances([main], [tx("legacy", -100)], [])[DEFAULT_ACCOUNT_ID]).toBe(-100);
+  });
+
+  it("moves linked savings deposits into the goal account without changing net worth", () => {
+    const savings: Account = { ...bank, id: "sav", name: "Savings", openingBalance: 0 };
+    const deposit: Transaction = { ...tx("goal", -1000, "kb"), category: "Savings", counterAccountId: "sav" };
+    const withdraw: Transaction = { ...tx("back", 200, "kb"), category: "Savings", counterAccountId: "sav" };
+    const balances = computeAccountBalances([bank, savings], [deposit, withdraw], []);
+    expect(balances).toEqual({ kb: 9200, sav: 800 });
+    expect(computeNetWorth(balances)).toBe(10000);
   });
 
   it("transfers never change net worth", () => {
@@ -114,5 +124,22 @@ describe("restoring backups", () => {
     expect(result.transfers).toEqual([]);
     expect(result.defaultAccountId).toBe("card");
     expect(result.transactions.map((t) => t.accountId)).toEqual(["card", "card"]);
+  });
+});
+
+describe("guessing the account from a slip", () => {
+  const kbank: Account = { id: "k", name: "กสิกร ออมทรัพย์", type: "bank", openingBalance: 0, archived: false, createdAt: "2026-10-01" };
+  const scb: Account = { id: "s", name: "Salary", alias: "scb", type: "bank", openingBalance: 0, archived: false, createdAt: "2026-10-01" };
+  const scbCard: Account = { id: "c", name: "SCB Card", type: "credit", openingBalance: 0, archived: false, createdAt: "2026-10-01" };
+
+  it("matches by account name or alias", () => {
+    expect(guessAccountForBank("Kasikornbank (กสิกรไทย)", [scb, kbank])).toBe("k");
+    expect(guessAccountForBank("SCB (ไทยพาณิชย์)", [scbCard, kbank, scb])).toBe("s");
+  });
+
+  it("returns nothing for unknown providers or when no account matches", () => {
+    expect(guessAccountForBank("PromptPay (พร้อมเพย์)", [kbank, scb])).toBeUndefined();
+    expect(guessAccountForBank("Krungthai Bank (กรุงไทย)", [kbank, scb])).toBeUndefined();
+    expect(guessAccountForBank(undefined, [kbank])).toBeUndefined();
   });
 });

@@ -18,6 +18,7 @@ import {
 import { useTranslation } from "react-i18next";
 import {
   CATEGORY_COLORS,
+  type Account,
   type Allocation,
   type AutocompleteItem,
   type DailySafeToSpend,
@@ -49,6 +50,7 @@ interface QuickCommandBarProps {
   setPresets: (presets: PresetItem[]) => void;
   onLogTransaction: (tx: Transaction) => void | Promise<void>;
   onConfigureBudget?: () => void;
+  accounts?: Account[];
 }
 
 export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
@@ -62,6 +64,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
   setPresets,
   onLogTransaction,
   onConfigureBudget,
+  accounts = [],
 }) => {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -93,9 +96,17 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
   const hasBudget = income > 0 || transactions.some(tx => tx.date.startsWith(activeMonth) && tx.category === "Income" && tx.amount > 0);
 
   // 2. Realtime Parsed Natural Language State
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.archived), [accounts]);
+  const accountAliases = useMemo(
+    () => activeAccounts.map((a) => a.alias).filter((alias): alias is string => Boolean(alias)),
+    [activeAccounts]
+  );
   const parsedTx: ParsedQuickTransaction = useMemo(() => {
-    return parseQuickInput(inputVal);
-  }, [inputVal]);
+    return parseQuickInput(inputVal, { accountAliases });
+  }, [inputVal, accountAliases]);
+  const parsedAccount = parsedTx.accountAlias
+    ? activeAccounts.find((a) => a.alias === parsedTx.accountAlias)
+    : undefined;
 
   // 3. Smart Top Presets for Quick Bar Chips
   const smartPresets = useMemo(() => {
@@ -170,6 +181,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       date: todayStr,
       category: preset.category,
       cleared: true,
+      ...(preset.accountId && activeAccounts.some((a) => a.id === preset.accountId) ? { accountId: preset.accountId } : {}),
     };
 
     setIsSaving(true);
@@ -196,6 +208,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       category: parsedTx.category,
       cleared: true,
       notes: parsedTx.notes,
+      ...(parsedAccount ? { accountId: parsedAccount.id } : {}),
     };
 
     pendingTxRef.current = newTx;
@@ -506,12 +519,23 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               />
               {t(`category.${parsedTx.category}`)}
             </span>
+            {parsedAccount && (
+              <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--primary)]/30 bg-[var(--primary-soft)] px-2.5 py-0.5 font-semibold text-[var(--primary-ink)]">
+                {t("accounts.fieldLabel")}: {parsedAccount.name}
+              </span>
+            )}
             {parsedTx.notes && (
               <span className="text-xs text-[var(--color-ink-soft)] italic">
                 {t("ux.note")}: {parsedTx.notes}
               </span>
             )}
           </motion.div>
+        )}
+
+        {inputVal.trim() && parsedTx.unknownAccountAlias && (
+          <p role="alert" className="mt-2 text-xs font-semibold text-[var(--rose-ink)]">
+            {t("accounts.unknownAlias", { alias: parsedTx.unknownAccountAlias, aliases: accountAliases.map((a) => `@${a}`).join(", ") })}
+          </p>
         )}
 
         {/* Autocomplete Dropdown */}
@@ -620,6 +644,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       {/* Presets CRUD Manager Modal */}
       </fieldset>
       <PresetManagerModal
+        accounts={activeAccounts}
         isOpen={isPresetModalOpen}
         onClose={() => setIsPresetModalOpen(false)}
         presets={presets}

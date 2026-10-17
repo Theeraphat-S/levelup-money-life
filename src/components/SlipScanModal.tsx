@@ -21,7 +21,10 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
+import { CustomSelect } from "./common/CustomSelect";
+import { guessAccountForBank } from "../utils/accounts";
 import {
+  type Account,
   EXPENSE_CATEGORIES,
   CATEGORY_COLORS,
   type Transaction,
@@ -49,6 +52,7 @@ export interface SlipQueueItem {
   category: TransactionCategory;
   cleared: boolean;
   notes: string;
+  accountId: string; // "" = default account
 }
 
 interface SlipScanModalProps {
@@ -57,6 +61,7 @@ interface SlipScanModalProps {
   onSave: (tx: Transaction, xpBonus: number) => void | Promise<void>;
   onSaveBatch?: (txs: Transaction[], totalXpBonus: number) => void | Promise<void>;
   initialFiles?: (File | string)[] | null;
+  accounts?: Account[];
 }
 
 export const SlipScanModal: React.FC<SlipScanModalProps> = ({
@@ -65,8 +70,13 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
   onSave,
   onSaveBatch,
   initialFiles,
+  accounts = [],
 }) => {
   const { t } = useTranslation();
+  const activeAccounts = accounts.filter((a) => !a.archived);
+  // Read inside the async parser callback without restarting in-flight scans
+  const accountsRef = useRef<Account[]>(accounts);
+  accountsRef.current = accounts;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addMoreInputRef = useRef<HTMLInputElement>(null);
 
@@ -128,6 +138,10 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                 category: result.suggestedCategory,
                 notes: result.notes || "",
                 cleared: true,
+                // Outgoing slips come from the payer's own bank app, so the bank tells us the account
+                accountId: result.transactionType === "expense"
+                  ? guessAccountForBank(result.bankName, accountsRef.current) ?? ""
+                  : "",
               };
             }
             return q;
@@ -180,6 +194,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
           category: "Food",
           cleared: true,
           notes: "",
+          accountId: "",
         };
       });
 
@@ -336,6 +351,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
       category: finalCategory,
       cleared: item.cleared,
       notes: item.notes.trim(),
+      ...(item.accountId ? { accountId: item.accountId } : {}),
     };
   };
 
@@ -949,6 +965,24 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                           className="w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-accent)] shadow-xs font-medium"
                         />
                       </div>
+
+                      {activeAccounts.length > 1 && (
+                        <div>
+                          <span className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
+                            {t("accounts.fieldLabel")}
+                          </span>
+                          <CustomSelect
+                            value={currentItem.accountId}
+                            onChange={(value) => updateCurrentItem({ accountId: value })}
+                            ariaLabel={t("accounts.fieldLabel")}
+                            className="w-full"
+                            options={[
+                              { value: "", label: t("accounts.useDefault"), textValue: t("accounts.useDefault") },
+                              ...activeAccounts.map((a) => ({ value: a.id, label: a.name, textValue: a.name, badge: t(`accounts.types.${a.type}`) })),
+                            ]}
+                          />
+                        </div>
+                      )}
 
                       {/* Category Selection (If Expense) */}
                       {currentItem.type === "expense" && (

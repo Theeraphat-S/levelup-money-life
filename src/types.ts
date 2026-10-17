@@ -62,6 +62,8 @@ export type Transaction = {
   cleared: boolean;
   notes?: string;
   accountId?: string; // Missing on legacy rows; resolved to the default account
+  // Savings deposits into a goal linked to an account: the money lands there (balance -= amount)
+  counterAccountId?: string;
 };
 
 export const ACCOUNT_TYPES = ["cash", "bank", "ewallet", "credit"] as const;
@@ -74,6 +76,8 @@ export type Account = {
   type: AccountType;
   openingBalance: number; // Negative for credit card debt carried in
   alias?: string; // Short handle for quick input, e.g. "kb"
+  statementDay?: number; // Credit cards: day the statement is cut (1-31)
+  dueDay?: number; // Credit cards: day payment is due (1-31)
   archived: boolean;
   createdAt: string;
 };
@@ -97,6 +101,7 @@ export type PresetItem = {
   type?: "expense" | "income";
   usageCount?: number;
   isCustom?: boolean;
+  accountId?: string; // Logs into this account instead of the default one
 };
 
 export type ParsedQuickTransaction = {
@@ -106,6 +111,8 @@ export type ParsedQuickTransaction = {
   category: TransactionCategory;
   type: "expense" | "income";
   notes?: string;
+  accountAlias?: string; // Matched "@alias" for an account, lowercased
+  unknownAccountAlias?: string; // "@word" that is neither an account nor a category tag
   raw: string;
   error?: string;
 };
@@ -188,6 +195,7 @@ export type SavingsGoal = {
   color?: string;
   status: "active" | "completed" | "archived";
   milestonesReached: number[]; // e.g. [25, 50, 75, 100]
+  accountId?: string; // Optional account where this money is actually kept
   createdAt: string;
   updatedAt: string;
 };

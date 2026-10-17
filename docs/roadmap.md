@@ -4,18 +4,20 @@ Decided 2026-10-17. Goal: make the numbers in the app match real money (multiple
 
 Order: finance features → UX polish → game layer.
 
-## Phase 1 — Accounts & transfers
+## Phase 1 — Accounts & transfers ✅
 - Account types: cash, bank, e-wallet, credit card. Each has an opening balance; current balance is derived from transactions and transfers.
 - Transfers move money between accounts and are never counted as income or expense.
 - Existing transactions migrate into a default "Main account". Old JSON backups still restore (missing accounts fall back to the default).
 - Net worth = sum of all account balances (credit card balances are negative).
 
-## Phase 2 — Credit cards & account-aware input
+## Phase 2 — Credit cards & account-aware input ✅
 - Card purchases count as expenses when swiped. Paying the card is a transfer bank → card.
 - Card accounts have a statement day and due day; a "Pay card X" bill is generated in Recurring Bills from the statement balance. Paying it records a transfer and is not deducted from Safe-to-Spend again.
 - Quick command bar: default account plus `@alias` suffix (`กะเพรา 65 @kb`). Presets can carry an account. Slip scans guess the account from the bank name.
 - Safe-to-Spend keeps the plan-based formula; transfers do not affect it.
 - Savings goals may optionally link to a destination account (deposit = transfer); unlinked goals keep the current behaviour. Either way deposits still count toward the Savings bucket.
+  - Implemented as a `Savings` transaction with `counterAccountId`: it stays in every savings metric, and balances move the amount from the source account into the goal account.
+- Regular bill payments can also choose which account paid.
 
 ## Phase 3 — Custom categories & category budgets
 - The 9 built-in categories become defaults; users can add, edit and hide categories, each mapped to Needs / Wants / Savings.

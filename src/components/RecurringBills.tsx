@@ -1,10 +1,12 @@
 import React, { useMemo, useRef, useState } from "react";
-import { ArrowRight, CalendarDots, CheckCircle, PencilSimple, Plus, Receipt, Trash, X } from "@phosphor-icons/react";
+import { createPortal } from "react-dom";
+import { ArrowRight, CalendarDots, CheckCircle, CreditCard, PencilSimple, Plus, Receipt, Trash, X } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { getUnpaidBillOccurrences } from "../utils/recurringBills";
 import { getDaysInMonth, getLocalTodayISO } from "../utils/safeToSpend";
-import type { BillOccurrence, RecurringBill, RecurringBillPayment, Transaction, TransactionCategory, ViewTab } from "../types";
+import type { Account, BillOccurrence, RecurringBill, RecurringBillPayment, Transaction, TransactionCategory, Transfer, ViewTab } from "../types";
+import type { CardBillOccurrence } from "../utils/cardBills";
 
 const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const billCategories: Exclude<TransactionCategory, "Income" | "Savings">[] = [
@@ -34,6 +36,7 @@ const emptyForm: BillForm = {
 type DialogState =
   | { type: "edit"; bill?: RecurringBill }
   | { type: "pay"; occurrence: BillOccurrence }
+  | { type: "payCard"; cardBill: CardBillOccurrence }
   | null;
 
 function occurrenceDate(year: number, month: number, day: number): string {
@@ -46,7 +49,11 @@ export interface RecurringBillsProps {
   transactions: Transaction[];
   activeMonth: string;
   onSaveBills: (bills: RecurringBill[]) => void;
-  onPayBill: (bill: RecurringBill, payment: RecurringBillPayment) => Promise<void>;
+  onPayBill: (bill: RecurringBill, payment: RecurringBillPayment, accountId?: string) => Promise<void>;
+  cardBills?: CardBillOccurrence[];
+  accounts?: Account[];
+  defaultAccountId?: string;
+  onPayCard?: (transfer: Transfer) => void;
 }
 
 export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
@@ -55,9 +62,17 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
   activeMonth,
   onSaveBills,
   onPayBill,
+  cardBills = [],
+  accounts = [],
+  defaultAccountId,
+  onPayCard,
 }) => {
   const { t } = useTranslation();
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [payFromId, setPayFromId] = useState("");
+  const activeAccounts = accounts.filter((account) => !account.archived);
+  // Card bills are paid from a non-card account; regular bills may be paid from any account
+  const cardPaySources = activeAccounts.filter((account) => account.type !== "credit");
   const [form, setForm] = useState<BillForm>(emptyForm);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(getLocalTodayISO());
@@ -140,8 +155,41 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
   const openPayment = (occurrence: BillOccurrence) => {
     setPaymentAmount(String(occurrence.bill.amount));
     setPaymentDate(today);
+    setPayFromId(defaultAccountId ?? "");
     setFormError("");
     setDialog({ type: "pay", occurrence });
+  };
+
+  const openCardPayment = (cardBill: CardBillOccurrence) => {
+    setPaymentAmount(String(cardBill.remaining));
+    setPaymentDate(today);
+    const preferred = cardPaySources.find((account) => account.id === defaultAccountId) ?? cardPaySources[0];
+    setPayFromId(preferred?.id ?? "");
+    setFormError("");
+    setDialog({ type: "payCard", cardBill });
+  };
+
+  const submitCardPayment = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (dialog?.type !== "payCard" || !onPayCard) return;
+    const amount = Number(paymentAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setFormError(t("bills.invalidPaymentAmount"));
+      return;
+    }
+    if (!payFromId) {
+      setFormError(t("bills.cardNeedsSource"));
+      return;
+    }
+    onPayCard({
+      id: crypto.randomUUID(),
+      fromAccountId: payFromId,
+      toAccountId: dialog.cardBill.account.id,
+      amount,
+      date: paymentDate,
+      notes: t("bills.cardBillName", { name: dialog.cardBill.account.name }),
+    });
+    setDialog(null);
   };
 
   const submitPayment = async (event: React.FormEvent) => {
@@ -161,7 +209,7 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
         amount,
         transactionId: crypto.randomUUID(),
       };
-      await onPayBill(dialog.occurrence.bill, payment);
+      await onPayBill(dialog.occurrence.bill, payment, payFromId || undefined);
       setDialog(null);
     } catch {
       setFormError(t("bills.paymentFailed"));
@@ -172,6 +220,7 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
 
   const formDialog = dialog?.type === "edit";
   const paymentDialog = dialog?.type === "pay";
+  const cardDialog = dialog?.type === "payCard";
 
   return (
     <section className="space-y-4" aria-label={t("bills.title")}>
@@ -225,13 +274,46 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
         </div>
       )}
 
-      {dialog && (
+      {cardBills.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="flex items-center gap-1.5 pt-2 text-xs font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
+            <CreditCard size={15} weight="duotone" className="text-[var(--primary)]" />
+            {t("bills.cardSection")}
+          </h3>
+          {cardBills.map((cardBill) => (
+            <article key={`${cardBill.account.id}-${cardBill.dueDate}`} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-3.5 sm:flex sm:items-center sm:justify-between sm:gap-3">
+              <div className="min-w-0">
+                <h4 className="truncate text-sm font-bold text-[var(--color-ink)]">{t("bills.cardBillName", { name: cardBill.account.name })}</h4>
+                <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                  {t("bills.statementOn", { date: cardBill.statementDate, amount: thb.format(cardBill.statementAmount) })}
+                  {cardBill.paidAmount > 0 && ` · ${t("bills.paidSoFar", { amount: thb.format(cardBill.paidAmount) })}`}
+                </p>
+                <p className={`mt-1 text-xs font-semibold ${cardBill.overdue ? "text-[var(--rose-ink)]" : "text-[var(--color-ink-soft)]"}`}>
+                  {cardBill.remaining === 0 ? t("bills.cardPaid") : cardBill.overdue ? t("bills.overdue") : t("bills.dueOn", { date: cardBill.dueDate })}
+                </p>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-3 sm:mt-0 sm:justify-end">
+                <span className="whitespace-nowrap font-mono text-sm font-bold text-[var(--color-ink)]">฿{thb.format(cardBill.remaining)}</span>
+                {cardBill.remaining > 0 && onPayCard && (
+                  <button type="button" onClick={() => openCardPayment(cardBill)} className="inline-flex items-center gap-1 rounded-xl border border-[var(--jade)]/40 bg-[var(--jade-soft)] px-2.5 py-1.5 text-xs font-bold text-[var(--jade-ink)] transition hover:opacity-80 active:scale-[0.98]">
+                    <CheckCircle size={14} weight="fill" />{t("bills.payCard")}
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {dialog && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onKeyDown={(event) => { if (event.key === "Escape" && !saving) setDialog(null); }}>
           <button type="button" aria-label={t("ux.close")} onClick={() => setDialog(null)} className="fixed inset-0 cursor-default bg-black/40 backdrop-blur-xs" />
           <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="bill-dialog-title" tabIndex={-1} className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-5 py-4">
               <h2 id="bill-dialog-title" className="text-base font-bold text-[var(--color-ink)]">
-                {formDialog ? (dialog.bill ? t("bills.editTitle") : t("bills.addTitle")) : t("bills.paymentTitle", { name: paymentDialog ? dialog.occurrence.bill.name : "" })}
+                {formDialog
+                  ? (dialog.bill ? t("bills.editTitle") : t("bills.addTitle"))
+                  : t("bills.paymentTitle", { name: paymentDialog ? dialog.occurrence.bill.name : cardDialog ? t("bills.cardBillName", { name: dialog.cardBill.account.name }) : "" })}
               </h2>
               <button type="button" aria-label={t("ux.close")} onClick={() => setDialog(null)} className="rounded-lg p-1.5 text-[var(--color-ink-soft)] transition hover:bg-[var(--color-line-subtle)] active:scale-[0.98]"><X size={18} /></button>
             </div>
@@ -254,6 +336,9 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
             ) : paymentDialog && (
               <form onSubmit={submitPayment} className="space-y-4 p-5">
                 <p className="text-sm text-[var(--color-ink-soft)]">{t("bills.paymentHelp", { dueDate: dialog.occurrence.dueDate })}</p>
+                {activeAccounts.length > 1 && (
+                  <label className="block space-y-1 text-xs font-semibold text-[var(--color-ink-soft)]"><span>{t("bills.payFrom")}</span><select value={payFromId} onChange={(event) => setPayFromId(event.target.value)} className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]">{activeAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {t(`accounts.types.${account.type}`)}</option>)}</select></label>
+                )}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="block space-y-1 text-xs font-semibold text-[var(--color-ink-soft)]"><span>{t("bills.actualAmount")}</span><input autoFocus required type="number" min="0.01" step="0.01" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 font-mono text-sm text-[var(--color-ink)]" /></label>
                   <label className="block space-y-1 text-xs font-semibold text-[var(--color-ink-soft)]"><span>{t("bills.paidOn")}</span><input required type="date" max={today} value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]" /></label>
@@ -262,9 +347,21 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
                 <div className="flex justify-end gap-2 border-t border-[var(--color-line)] pt-4"><button type="button" onClick={() => setDialog(null)} disabled={saving} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] active:scale-[0.98]">{t("quickAdd.cancel")}</button><button type="submit" disabled={saving} className="rounded-xl bg-[#1C5954] px-3 py-2 text-xs font-bold text-white disabled:opacity-60 active:scale-[0.98] dark:bg-[#76AA9D] dark:text-[#071B1A]">{saving ? t("ux.saving") : t("bills.confirmPayment")}</button></div>
               </form>
             )}
+            {cardDialog && (
+              <form onSubmit={submitCardPayment} className="space-y-4 p-5">
+                <p className="text-sm text-[var(--color-ink-soft)]">{t("bills.cardPaymentHelp", { dueDate: dialog.cardBill.dueDate })}</p>
+                <label className="block space-y-1 text-xs font-semibold text-[var(--color-ink-soft)]"><span>{t("bills.payFrom")}</span><select value={payFromId} onChange={(event) => setPayFromId(event.target.value)} className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]">{cardPaySources.map((account) => <option key={account.id} value={account.id}>{account.name} · {t(`accounts.types.${account.type}`)}</option>)}</select></label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="block space-y-1 text-xs font-semibold text-[var(--color-ink-soft)]"><span>{t("bills.actualAmount")}</span><input autoFocus required type="number" min="0.01" step="0.01" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 font-mono text-sm text-[var(--color-ink)]" /></label>
+                  <label className="block space-y-1 text-xs font-semibold text-[var(--color-ink-soft)]"><span>{t("bills.paidOn")}</span><input required type="date" max={today} value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]" /></label>
+                </div>
+                {formError && <p role="alert" className="text-xs font-semibold text-[var(--rose-ink)]">{formError}</p>}
+                <div className="flex justify-end gap-2 border-t border-[var(--color-line)] pt-4"><button type="button" onClick={() => setDialog(null)} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] active:scale-[0.98]">{t("quickAdd.cancel")}</button><button type="submit" className="rounded-xl bg-[#1C5954] px-3 py-2 text-xs font-bold text-white active:scale-[0.98] dark:bg-[#76AA9D] dark:text-[#071B1A]">{t("bills.confirmPayment")}</button></div>
+              </form>
+            )}
           </div>
         </div>
-      )}
+      , document.body)}
     </section>
   );
 };
@@ -274,12 +371,18 @@ export const UpcomingBillsSummary: React.FC<{
   transactions: Transaction[];
   activeMonth: string;
   setActiveTab: (tab: ViewTab) => void;
-}> = ({ bills, transactions, activeMonth, setActiveTab }) => {
+  cardBills?: CardBillOccurrence[];
+}> = ({ bills, transactions, activeMonth, setActiveTab, cardBills = [] }) => {
   const { t } = useTranslation();
   const today = getLocalTodayISO();
   const occurrences = useMemo(() => getUnpaidBillOccurrences(bills, activeMonth, today, new Set(transactions.map((transaction) => transaction.id))), [bills, transactions, activeMonth, today]);
-  const visible = occurrences.slice(-4).reverse();
-  if (bills.filter((bill) => bill.active).length === 0) return null;
+  const unpaidCards = cardBills.filter((cardBill) => cardBill.remaining > 0);
+  const items = [
+    ...occurrences.map((occurrence) => ({ key: `${occurrence.bill.id}-${occurrence.dueDate}`, name: occurrence.bill.name, dueDate: occurrence.dueDate, overdue: occurrence.overdue, amount: occurrence.bill.amount, estimated: occurrence.bill.estimated })),
+    ...unpaidCards.map((cardBill) => ({ key: `card-${cardBill.account.id}-${cardBill.dueDate}`, name: t("bills.cardBillName", { name: cardBill.account.name }), dueDate: cardBill.dueDate, overdue: cardBill.overdue, amount: cardBill.remaining, estimated: false })),
+  ].sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.name.localeCompare(b.name));
+  const visible = items.slice(-4).reverse();
+  if (bills.filter((bill) => bill.active).length === 0 && cardBills.length === 0) return null;
 
   return (
     <section className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-4" aria-label={t("bills.upcoming")}>
@@ -291,13 +394,13 @@ export const UpcomingBillsSummary: React.FC<{
         <p className="mt-3 rounded-xl bg-[var(--color-surface-subtle)] p-3 text-xs text-[var(--color-ink-soft)]">{t("bills.allPaid")}</p>
       ) : (
         <div className="mt-3 space-y-2">
-          {visible.map((occurrence) => (
-            <div key={`${occurrence.bill.id}-${occurrence.dueDate}`} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3 py-2">
-              <div className="min-w-0"><p className="truncate text-xs font-semibold text-[var(--color-ink)]">{occurrence.bill.name}</p><p className={`text-[11px] ${occurrence.overdue ? "font-semibold text-[var(--rose-ink)]" : "text-[var(--color-ink-soft)]"}`}>{occurrence.overdue ? t("bills.overdue") : t("bills.dueOn", { date: occurrence.dueDate })}{occurrence.bill.estimated ? ` · ${t("bills.estimated")}` : ""}</p></div>
-              <span className="whitespace-nowrap font-mono text-xs font-bold text-[var(--color-ink)]">฿{thb.format(occurrence.bill.amount)}</span>
+          {visible.map((item) => (
+            <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3 py-2">
+              <div className="min-w-0"><p className="truncate text-xs font-semibold text-[var(--color-ink)]">{item.name}</p><p className={`text-[11px] ${item.overdue ? "font-semibold text-[var(--rose-ink)]" : "text-[var(--color-ink-soft)]"}`}>{item.overdue ? t("bills.overdue") : t("bills.dueOn", { date: item.dueDate })}{item.estimated ? ` · ${t("bills.estimated")}` : ""}</p></div>
+              <span className="whitespace-nowrap font-mono text-xs font-bold text-[var(--color-ink)]">฿{thb.format(item.amount)}</span>
             </div>
           ))}
-          {occurrences.length > visible.length && <p className="text-right text-[11px] text-[var(--color-ink-soft)]">{t("bills.moreUnpaid", { count: occurrences.length - visible.length })}</p>}
+          {items.length > visible.length && <p className="text-right text-[11px] text-[var(--color-ink-soft)]">{t("bills.moreUnpaid", { count: items.length - visible.length })}</p>}
         </div>
       )}
     </section>

@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import {
   CATEGORY_COLORS,
   EXPENSE_CATEGORIES,
+  type Account,
   type PresetItem,
   type TransactionCategory,
 } from "../types";
@@ -22,6 +23,7 @@ import {
   updatePreset,
   deletePreset,
 } from "../utils/presetManager";
+import { CustomSelect } from "./common/CustomSelect";
 
 const EMOJI_OPTIONS = [
   "☕", "🍱", "🚇", "🛒", "⛽", "🥤", "🍿", "🍜",
@@ -34,6 +36,7 @@ interface PresetManagerModalProps {
   onClose: () => void;
   presets: PresetItem[];
   setPresets: (presets: PresetItem[]) => void;
+  accounts?: Account[];
 }
 
 export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
@@ -41,6 +44,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
   onClose,
   presets,
   setPresets,
+  accounts = [],
 }) => {
   const { t } = useTranslation();
 
@@ -53,7 +57,9 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
   const [icon, setIcon] = useState("🍱");
   const [category, setCategory] = useState<TransactionCategory>("Food");
   const [type, setType] = useState<"expense" | "income">("expense");
+  const [accountId, setAccountId] = useState("");
   const [formError, setFormError] = useState("");
+  const activeAccounts = accounts.filter((a) => !a.archived);
 
   const handleStartCreate = () => {
     setEditingPreset(null);
@@ -63,6 +69,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
     setIcon("🍱");
     setCategory("Food");
     setType("expense");
+    setAccountId("");
     setFormError("");
   };
 
@@ -74,6 +81,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
     setIcon(p.icon);
     setCategory(p.category);
     setType(p.type || (p.category === "Income" ? "income" : "expense"));
+    setAccountId(p.accountId ?? "");
     setFormError("");
   };
 
@@ -97,13 +105,16 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
           icon: icon || "⚡",
           category: type === "income" ? "Income" : category,
           type,
+          ...(accountId ? { accountId } : {}),
         },
         presets
       );
       setPresets(updated);
     } else if (editingPreset) {
+      const { accountId: _previousAccount, ...editingBase } = editingPreset;
       const updatedItem: PresetItem = {
-        ...editingPreset,
+        ...editingBase,
+        ...(accountId ? { accountId } : {}),
         name: name.trim(),
         amount: numAmount,
         icon: icon || "⚡",
@@ -389,6 +400,25 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
                       </button>
                     </div>
                   </div>
+
+                  {/* Account (only when there is a choice to make) */}
+                  {activeAccounts.length > 1 && (
+                    <div>
+                      <span className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
+                        {t("accounts.presetAccount")}
+                      </span>
+                      <CustomSelect
+                        value={accountId}
+                        onChange={setAccountId}
+                        ariaLabel={t("accounts.presetAccount")}
+                        className="w-full"
+                        options={[
+                          { value: "", label: t("accounts.useDefault"), textValue: t("accounts.useDefault") },
+                          ...activeAccounts.map((a) => ({ value: a.id, label: a.name, textValue: a.name, badge: t(`accounts.types.${a.type}`) })),
+                        ]}
+                      />
+                    </div>
+                  )}
 
                   {/* Category Selector (Only for Expense) */}
                   {type === "expense" && (

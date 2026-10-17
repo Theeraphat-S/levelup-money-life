@@ -150,6 +150,9 @@
 - **Multiple Accounts**: Track cash, bank accounts, e-wallets and credit cards, each with an opening balance; balances are derived from entries and transfers.
 - **Transfers**: Move money between your own accounts without counting it as income or spending. Net worth stays unchanged.
 - **Safe Migration**: Existing entries move into a default "Main account", and backups from before accounts still restore.
+- **Credit Card Bills**: Set a statement day and due day; a "Pay card" bill appears with the statement balance. Paying it records a transfer, so card purchases are counted once — when swiped.
+- **Account-Aware Input**: Type `@alias` in the quick bar (`ข้าว 70 @kb`), give presets their own account, and let slip scans pick the paying bank account automatically.
+- **Linked Savings Goals**: Optionally keep a goal's money in a real account; deposits move money there and still count as savings.
 
 ---
 
@@ -176,7 +179,7 @@
 | 🎯 **วางแผนงบประมาณ 50/30/20 (Budget)** | จัดสรรสัดส่วน Needs / Wants / Savings เทียบยอดใช้จริงกับเป้าหมายแบบเรียลไทม์ |
 | 🐖 **เป้าหมายเงินออม & Sinking Funds (ใหม่)** | ระบบกระปุกออมเงินจัดสรรเป้าหมาย (ฉุกเฉิน, ท่องเที่ยว, ซื้อของ, ลงทุน) + คำนวณ Smart Pace ต่อเดือน + คำนวณเงินสำรองฉุกเฉิน 3-6 เดือนอัตโนมัติ + โบนัส Milestone XP (25, 50, 75, 100%) พร้อมซิงก์ลงสมุดบัญชีจริง |
 | 🧾 **วางแผนบิลประจำ** | เพิ่มบิลรายเดือน/รายปี ดูกำหนดชำระในเดือนที่เลือก และยืนยันยอดจ่ายจริงเพื่อบันทึกลงสมุดบัญชี พร้อมกันยอดบิลที่ยังไม่ชำระออกจาก Safe-to-Spend |
-| 🏦 **บัญชีและการโอน** | แยกเงินสด บัญชีธนาคาร e-Wallet และบัตรเครดิต พร้อมยอดตั้งต้นและยอดคงเหลือ โอนระหว่างบัญชีโดยไม่นับเป็นรายรับหรือรายจ่าย และย้ายรายการเดิมเข้า "บัญชีหลัก" อัตโนมัติ |
+| 🏦 **บัญชีและการโอน** | แยกเงินสด บัญชีธนาคาร e-Wallet และบัตรเครดิต พร้อมยอดตั้งต้นและยอดคงเหลือ โอนระหว่างบัญชีโดยไม่นับเป็นรายรับหรือรายจ่าย ย้ายรายการเดิมเข้า "บัญชีหลัก" อัตโนมัติ + บิลบัตรเครดิตจากวันตัดรอบ (จ่ายเป็นการโอน ไม่นับรายจ่ายซ้ำ) + พิมพ์ `@ชื่อย่อ` ในช่องจดด่วน, preset ผูกบัญชีได้, สลิปเดาบัญชีจากธนาคาร และผูกเป้าออมกับบัญชีจริงได้ |
 | 🧮 **คำนวณภาษีเงินได้บุคคลธรรมดา (Tax Planner)** | คำนวณอัตราภาษีขั้นบันได 0%-35% พร้อมรองรับค่าลดหย่อนภาษีไทยครบวงจร (ประกันสังคม, กองทุน PVD, RMF, SSF, ThaiESG, Easy E-Receipt, ประกันชีวิต/สุขภาพ, ดอกเบี้ยบ้าน) |
 | 📊 **ศูนย์วิเคราะห์ข้อมูล (Analytics Hub)** | กราฟวงกลม Donut Chart และกราฟแท่งเปรียบเทียบสัดส่วนรายจ่ายแยกหมวดหมู่ |
 | ⚔️ **ระบบเควสต์ & เลเวล (Quests & Growth)** | ภารกิจรายวันเก็บ XP เลื่อนระดับจาก Novice สู่ Grandmaster พร้อมเหรียญความสำเร็จ |
