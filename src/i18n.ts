@@ -1730,7 +1730,13 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
+function syncDocumentLang(lng: string) {
+  if (typeof document !== "undefined") document.documentElement.lang = lng;
+}
+syncDocumentLang(i18n.language);
+
 i18n.on("languageChanged", (lng) => {
+  syncDocumentLang(lng);
   try {
     localStorage.setItem(STORAGE_KEY, lng);
   } catch {

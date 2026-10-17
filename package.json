@@ -12,8 +12,9 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/anuphan": "^5.3.0",
     "@fontsource-variable/outfit": "^5.3.0",
+    "@lordicon/react": "^2.0.0",
     "@phosphor-icons/react": "^2.1.10",
     "@tauri-apps/api": "latest",
     "@tauri-apps/plugin-autostart": "^2.7.0",
@@ -22,7 +23,8 @@
     "@tauri-apps/plugin-store": "latest",
     "@vitejs/plugin-react": "latest",
     "i18next": "^26.3.6",
-    "lucide-react": "latest",
+    "iconsax-react": "^0.0.8",
+    "lottie-web": "^5.13.0",
     "motion": "^12.42.2",
     "react": "latest",
     "react-dom": "latest",

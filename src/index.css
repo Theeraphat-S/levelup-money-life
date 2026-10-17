@@ -3,8 +3,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Outfit Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
+  /* Outfit has no Thai glyphs, so Thai text falls through to Anuphan. */
+  --font-sans: "Outfit Variable", "Anuphan Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Numbers use the sans face with tabular figures (see .font-mono below) instead of a monospace font. */
+  --font-mono: var(--font-sans);
 
   /* Nature-Inspired FinTech Command Center Bento Tokens */
   --color-ink: var(--ink);
@@ -189,6 +191,22 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     font-feature-settings: "ss01", "cv01";
+  }
+
+  /* Thai stacks vowels and tone marks above and below the line, so it needs more leading. */
+  html[lang="th"] {
+    --text-xs--line-height: 1.6;
+    --text-sm--line-height: 1.6;
+    --text-base--line-height: 1.6;
+    --text-lg--line-height: 1.55;
+  }
+
+  html[lang="th"] body {
+    line-height: 1.6;
+  }
+
+  .font-mono {
+    font-variant-numeric: tabular-nums;
   }
 
   * {

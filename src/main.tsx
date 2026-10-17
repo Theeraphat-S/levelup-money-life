@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import "./i18n";
 import App from "./App";
 import "@fontsource-variable/outfit";
-import "@fontsource-variable/jetbrains-mono";
+import "@fontsource-variable/anuphan";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
