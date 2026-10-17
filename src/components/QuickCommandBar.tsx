@@ -16,8 +16,9 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
+import { useCategories } from "../hooks/useCategories";
 import {
-  CATEGORY_COLORS,
+  type Account,
   type Allocation,
   type AutocompleteItem,
   type DailySafeToSpend,
@@ -35,6 +36,7 @@ import {
   incrementPresetUsage,
 } from "../utils/presetManager";
 import { PresetManagerModal } from "./PresetManagerModal";
+import { CategoryIcon } from "./common/CategoryIcon";
 
 const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
@@ -49,6 +51,7 @@ interface QuickCommandBarProps {
   setPresets: (presets: PresetItem[]) => void;
   onLogTransaction: (tx: Transaction) => void | Promise<void>;
   onConfigureBudget?: () => void;
+  accounts?: Account[];
 }
 
 export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
@@ -62,8 +65,10 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
   setPresets,
   onLogTransaction,
   onConfigureBudget,
+  accounts = [],
 }) => {
   const { t } = useTranslation();
+  const categories = useCategories();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -93,9 +98,24 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
   const hasBudget = income > 0 || transactions.some(tx => tx.date.startsWith(activeMonth) && tx.category === "Income" && tx.amount > 0);
 
   // 2. Realtime Parsed Natural Language State
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.archived), [accounts]);
+  const accountAliases = useMemo(
+    () => activeAccounts.map((a) => a.alias).filter((alias): alias is string => Boolean(alias)),
+    [activeAccounts]
+  );
+  // Custom categories can be tagged by name, e.g. "อาหารแมว 120 #สัตว์เลี้ยง"
+  const categoryTags = useMemo(
+    () => Object.fromEntries(
+      categories.list.filter((c) => !c.builtIn && !c.hidden && c.name).map((c) => [(c.name as string).toLowerCase(), c.id])
+    ),
+    [categories.list]
+  );
   const parsedTx: ParsedQuickTransaction = useMemo(() => {
-    return parseQuickInput(inputVal);
-  }, [inputVal]);
+    return parseQuickInput(inputVal, { accountAliases, categoryTags });
+  }, [inputVal, accountAliases, categoryTags]);
+  const parsedAccount = parsedTx.accountAlias
+    ? activeAccounts.find((a) => a.alias === parsedTx.accountAlias)
+    : undefined;
 
   // 3. Smart Top Presets for Quick Bar Chips
   const smartPresets = useMemo(() => {
@@ -170,6 +190,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       date: todayStr,
       category: preset.category,
       cleared: true,
+      ...(preset.accountId && activeAccounts.some((a) => a.id === preset.accountId) ? { accountId: preset.accountId } : {}),
     };
 
     setIsSaving(true);
@@ -196,6 +217,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       category: parsedTx.category,
       cleared: true,
       notes: parsedTx.notes,
+      ...(parsedAccount ? { accountId: parsedAccount.id } : {}),
     };
 
     pendingTxRef.current = newTx;
@@ -364,7 +386,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               </div>
               <div>
                 <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
-                  {t("safeToSpend.monthSpent", { amount: "" }).replace(":", "")}
+                  {t("safeToSpend.monthSpentLabel")}
                 </div>
                 <div className="font-mono font-bold text-[var(--rose-ink)]">
                   ฿{thb.format(safeStats.monthSpent)}
@@ -384,7 +406,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               </div>
               <div>
                 <div className="text-xs font-semibold text-[var(--color-ink-soft)] uppercase">
-                  {t("safeToSpend.monthLeft", { amount: "" }).replace(":", "")}
+                  {t("safeToSpend.monthLeftLabel")}
                 </div>
                 <div className="font-mono font-bold text-[var(--jade-ink)]">
                   ฿{thb.format(Math.max(0, safeStats.monthRemaining))}
@@ -450,7 +472,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
               <button
                 type="button"
                 onClick={() => setInputVal("")}
-                aria-label="Clear input"
+                aria-label={t("ux.clearInput")}
                 className="rounded-lg p-1 text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)] transition"
               >
                 <X size={15} />
@@ -500,12 +522,14 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
             <span
               className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-0.5 font-medium border border-[var(--color-line)] bg-[var(--color-surface)] text-xs"
             >
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ backgroundColor: CATEGORY_COLORS[parsedTx.category] }}
-              />
-              {t(`category.${parsedTx.category}`)}
+              <CategoryIcon category={parsedTx.category} size={12} />
+              {categories.label(parsedTx.category)}
             </span>
+            {parsedAccount && (
+              <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--primary)]/30 bg-[var(--primary-soft)] px-2.5 py-0.5 font-semibold text-[var(--primary-ink)]">
+                {t("accounts.fieldLabel")}: {parsedAccount.name}
+              </span>
+            )}
             {parsedTx.notes && (
               <span className="text-xs text-[var(--color-ink-soft)] italic">
                 {t("ux.note")}: {parsedTx.notes}
@@ -514,13 +538,19 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
           </motion.div>
         )}
 
+        {inputVal.trim() && parsedTx.unknownAccountAlias && (
+          <p role="alert" className="mt-2 text-xs font-semibold text-[var(--rose-ink)]">
+            {t("accounts.unknownAlias", { alias: parsedTx.unknownAccountAlias, aliases: accountAliases.map((a) => `@${a}`).join(", ") })}
+          </p>
+        )}
+
         {/* Autocomplete Dropdown */}
         <AnimatePresence>
           {isFocused && autocompleteList.length > 0 && (
             <motion.div
               id="quick-bar-autocomplete-list"
               role="listbox"
-              aria-label="Transaction autocomplete suggestions"
+              aria-label={t("ux.suggestions")}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
@@ -536,7 +566,6 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
                 {autocompleteList.map((item, index) => {
                   const isHighlighted = highlightedIndex === index;
                   const isPositive = item.amount >= 0;
-                  const catColor = CATEGORY_COLORS[item.category] || "var(--primary)";
 
                   return (
                     <div
@@ -556,8 +585,8 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
                         <span className="text-base shrink-0">{item.icon || "📝"}</span>
                         <span className="font-semibold truncate">{item.name}</span>
                         <span className="inline-flex items-center gap-1 text-xs text-[var(--color-ink-soft)] font-normal border border-[var(--color-line)] rounded px-1.5 py-0.2 bg-[var(--color-surface)]">
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: catColor }} />
-                          {t(`category.${item.category}`)}
+                          <CategoryIcon category={item.category} size={12} />
+                          {categories.label(item.category)}
                         </span>
                       </div>
 
@@ -620,6 +649,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
       {/* Presets CRUD Manager Modal */}
       </fieldset>
       <PresetManagerModal
+        accounts={activeAccounts}
         isOpen={isPresetModalOpen}
         onClose={() => setIsPresetModalOpen(false)}
         presets={presets}

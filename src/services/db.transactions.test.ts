@@ -46,4 +46,22 @@ describe("transaction persistence", () => {
     expect(database.execute.mock.calls[0][0]).not.toContain(tx.name);
     expect(database.execute.mock.calls[1][0]).toContain("DELETE FROM transactions WHERE id NOT IN");
   });
+
+  it("persists the account and leaves legacy rows without one", async () => {
+    const select = vi.fn().mockResolvedValue([
+      { id: "a", name: "A", amount: -1, date: "2026-10-01", category: "Food", cleared: 1, notes: "", account_id: "kb" },
+      { id: "b", name: "B", amount: -2, date: "2026-10-01", category: "Food", cleared: 0, notes: null, account_id: null },
+    ]);
+    database.load.mockResolvedValueOnce({ execute: database.execute, select });
+    const { getDb, getTransactions, saveAllTransactions } = await import("./db");
+    await getDb();
+    database.execute.mockClear();
+    await saveAllTransactions([{ ...tx, accountId: "kb" }]);
+    expect(database.execute.mock.calls[0][0]).toContain("json_extract(value, '$.accountId')");
+
+    const rows = await getTransactions();
+    expect(rows[0].accountId).toBe("kb");
+    expect(rows[1]).not.toHaveProperty("accountId");
+    expect(rows[1]).not.toHaveProperty("account_id");
+  });
 });

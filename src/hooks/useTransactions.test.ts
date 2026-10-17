@@ -77,7 +77,7 @@ describe("useTransactions hook", () => {
     expect(result.current.saveStatus).toBe("failed");
     expect(result.current.lastLoggedTx).toBeNull();
     expect(award).not.toHaveBeenCalled();
-    expect(result.current.transactions).toEqual([tx]);
+    expect(result.current.transactions).toEqual([{ ...tx, accountId: "acc-main" }]);
     await act(async () => {
       await result.current.logQuickTransaction({ ...tx, amount: -70 }, { onAwardXp: award });
     });
@@ -85,6 +85,17 @@ describe("useTransactions hook", () => {
     expect(result.current.transactions).toHaveLength(1);
     expect(result.current.transactions[0].amount).toBe(-70);
     expect(award).toHaveBeenCalledTimes(1);
+  });
+
+  it("assigns new entries to the current default account but keeps an explicit one", async () => {
+    const { result } = renderHook(() => useTransactions());
+    const base: Transaction = { id: "a", name: "Taxi", amount: -90, date: "2026-10-04", category: "Transport", cleared: true };
+    act(() => result.current.setDefaultAccountId("cash"));
+    await act(async () => {
+      await result.current.logQuickTransaction(base);
+      await result.current.logQuickTransaction({ ...base, id: "b", accountId: "card" });
+    });
+    expect(Object.fromEntries(result.current.transactions.map((t) => [t.id, t.accountId]))).toEqual({ a: "cash", b: "card" });
   });
 
   it("serializes rapid saves so an older snapshot cannot overwrite a newer entry", async () => {

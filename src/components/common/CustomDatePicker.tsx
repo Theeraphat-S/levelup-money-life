@@ -11,6 +11,13 @@ import {
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 
+/** "17 ต.ค. 2026" / "17 Oct 2026" — the same format the picker shows, for read-only dates. */
+export function formatShortDate(iso: string, isThai: boolean): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  if (!year || !month || !day) return iso;
+  return `${day} ${(isThai ? MONTH_SHORT_TH : MONTH_SHORT_EN)[month - 1]} ${year}`;
+}
+
 export interface CustomDatePickerProps {
   value: string; // ISO format "YYYY-MM-DD"
   onChange: (date: string) => void;

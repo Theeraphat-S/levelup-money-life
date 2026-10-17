@@ -22,10 +22,12 @@ import {
   TrendUp,
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
+import { useCategories } from "../../hooks/useCategories";
 import { BentoCard } from "../common/BentoCard";
 import { MetricTile } from "../common/MetricTile";
+import { CategoryIcon } from "../common/CategoryIcon";
+import { UNACCOUNTED_CATEGORY, unaccountedTotal } from "../../utils/balanceCheck";
 import {
-  CATEGORY_COLORS,
   CHART_PALETTE,
   type Transaction,
   type TransactionCategory,
@@ -43,6 +45,7 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
   activeMonth,
 }) => {
   const { t } = useTranslation();
+  const categories = useCategories();
   const [chartType, setChartType] = useState<"donut" | "bar">("donut");
 
   const monthRows = transactions.filter((row) => row.date.startsWith(activeMonth));
@@ -60,6 +63,7 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
   const burnRate = Math.round(expenses / (daysInMonth || 30));
   const netSaved = monthRows.filter(row => row.category === "Savings").reduce((sum, row) => sum - row.amount, 0);
   const savingsRate = income > 0 ? Math.round(netSaved / income * 100) : 0;
+  const unaccounted = unaccountedTotal(transactions, activeMonth);
 
   // Category breakdown
   const categoryTotals: Record<string, number> = {};
@@ -72,9 +76,9 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
   const breakdown = Object.entries(categoryTotals)
     .map(([name, value], index) => ({
       name: name as TransactionCategory,
-      displayName: t(`category.${name}`),
+      displayName: categories.label(name),
       value,
-      color: CATEGORY_COLORS[name as TransactionCategory] || CHART_PALETTE[index % CHART_PALETTE.length],
+      color: categories.color(name) || CHART_PALETTE[index % CHART_PALETTE.length],
     }))
     .sort((a, b) => b.value - a.value);
 
@@ -138,10 +142,24 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
         <MetricTile
           icon={<Fire size={18} weight="fill" />}
           label={t("metric.burnRate")}
-          value={`฿${thb.format(burnRate)} / day`}
+          value={t("ux.perDay", { amount: thb.format(burnRate) })}
           tone="neutral"
         />
       </div>
+
+      {/* Money that balance checks could not trace, kept apart from known spending */}
+      {unaccounted > 0 && (
+        <div role="note" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3">
+          <span className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
+            <CategoryIcon category={UNACCOUNTED_CATEGORY} size={18} />
+            {t("analytics.unaccountedTitle")}
+          </span>
+          <span className="text-xs text-[var(--color-ink-soft)]">
+            <span className="font-mono text-sm font-bold text-[var(--color-ink)]">฿{thb.format(unaccounted)}</span>
+            {expenses > 0 && ` · ${t("analytics.unaccountedShare", { percent: Math.round((unaccounted / expenses) * 100) })}`}
+          </span>
+        </div>
+      )}
 
       {/* Smart Financial Insights Tile */}
       {insights.length > 0 && (

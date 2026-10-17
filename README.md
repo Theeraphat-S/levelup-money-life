@@ -146,6 +146,34 @@
 - **Compact Thai Labels**: Thai navigation and rank names use concise localized labels instead of mixing Thai and English in the same button.
 - **Responsive Actions**: Tool actions show their icons on narrower screens and full labels on wide desktop screens; icon buttons retain localized accessible names.
 
+#### 17. 🏦 Accounts & Transfers
+- **Multiple Accounts**: Track cash, bank accounts, e-wallets and credit cards, each with an opening balance; balances are derived from entries and transfers.
+- **Transfers**: Move money between your own accounts without counting it as income or spending. Net worth stays unchanged.
+- **Safe Migration**: Existing entries move into a default "Main account", and backups from before accounts still restore.
+- **Credit Card Bills**: Set a statement day and due day; a "Pay card" bill appears with the statement balance. Paying it records a transfer, so card purchases are counted once — when swiped.
+- **Account-Aware Input**: Type `@alias` in the quick bar (`ข้าว 70 @kb`), give presets their own account, and let slip scans pick the paying bank account automatically.
+- **Linked Savings Goals**: Optionally keep a goal's money in a real account; deposits move money there and still count as savings.
+
+#### 18. 🏷️ Custom Categories & Category Budgets
+- **Your Own Categories**: Add, edit and hide categories, each with an icon, a distinct colour and a Needs / Wants / Savings group. Built-ins stay as defaults; Income and Savings are always available.
+- **Never Colour Alone**: Every category shows its icon next to its name; the palette keeps ≥ 3:1 contrast in light and dark themes.
+- **Monthly Limits**: Cap any category per month. Budget shows spending against the limit, limits roll up into their 50/30/20 group, and a notice appears once when a category reaches 80% and again at 100%.
+- **Quick Tags**: Tag a custom category in the quick bar by name, e.g. `อาหารแมว 120 #สัตว์เลี้ยง`.
+
+#### 19. ⚖️ Balance Check & Evening Reminder
+- **Balance Check**: Enter an account's real balance; the app shows what is missing or extra. A shortfall can be split into remembered spending, and the rest is recorded as **Unaccounted** (shown separately in Analytics). A surplus becomes a "Balance adjustment" income. Each account remembers when it was last checked.
+- **Tray & Reminder (desktop)**: Closing the window keeps the app in the system tray (Quit from the tray menu), optional start at sign-in (off by default), and a notification at 20:00 by default — only on days with nothing logged. All of it is in Settings (gear icon).
+
+#### 20. 🧭 Focused Navigation & Dashboard
+- **Six Daily Tabs + Tools**: Tax planner, categories, data & backup and settings live in one Tools menu; the main tabs hold what you use every day or week.
+- **Dashboard Order**: Safe-to-Spend → account balances → *Needs attention* (overdue bills, budget and category overages, stale balance checks) → month KPIs → budget and quests.
+- **Account-Aware Ledger**: Account column and filter, transfers shown as one neutral row, and a running balance when one account is selected — ready to compare with a bank statement.
+
+#### 21. 🎯 Money-Habit Quests
+- **Weekly Balance Check (+30 XP)**: Completes on its own when any account is compared with its real balance during the week.
+- **Month Within Limits (+100 XP)**: Rewarded at the start of the next month when no category went over its limit (at least one limited category must have had spending).
+- Each period is rewarded once; starter quests now show in the selected language.
+
 ---
 
 ## 🇹🇭 ภาษาไทย
@@ -171,6 +199,11 @@
 | 🎯 **วางแผนงบประมาณ 50/30/20 (Budget)** | จัดสรรสัดส่วน Needs / Wants / Savings เทียบยอดใช้จริงกับเป้าหมายแบบเรียลไทม์ |
 | 🐖 **เป้าหมายเงินออม & Sinking Funds (ใหม่)** | ระบบกระปุกออมเงินจัดสรรเป้าหมาย (ฉุกเฉิน, ท่องเที่ยว, ซื้อของ, ลงทุน) + คำนวณ Smart Pace ต่อเดือน + คำนวณเงินสำรองฉุกเฉิน 3-6 เดือนอัตโนมัติ + โบนัส Milestone XP (25, 50, 75, 100%) พร้อมซิงก์ลงสมุดบัญชีจริง |
 | 🧾 **วางแผนบิลประจำ** | เพิ่มบิลรายเดือน/รายปี ดูกำหนดชำระในเดือนที่เลือก และยืนยันยอดจ่ายจริงเพื่อบันทึกลงสมุดบัญชี พร้อมกันยอดบิลที่ยังไม่ชำระออกจาก Safe-to-Spend |
+| 🏦 **บัญชีและการโอน** | แยกเงินสด บัญชีธนาคาร e-Wallet และบัตรเครดิต พร้อมยอดตั้งต้นและยอดคงเหลือ โอนระหว่างบัญชีโดยไม่นับเป็นรายรับหรือรายจ่าย ย้ายรายการเดิมเข้า "บัญชีหลัก" อัตโนมัติ + บิลบัตรเครดิตจากวันตัดรอบ (จ่ายเป็นการโอน ไม่นับรายจ่ายซ้ำ) + พิมพ์ `@ชื่อย่อ` ในช่องจดด่วน, preset ผูกบัญชีได้, สลิปเดาบัญชีจากธนาคาร และผูกเป้าออมกับบัญชีจริงได้ |
+| 🏷️ **หมวดหมู่และงบรายหมวด** | เพิ่ม/แก้/ซ่อนหมวดหมู่ได้เอง พร้อมไอคอนและสีที่ไม่ซ้ำกัน ตั้งงบต่อเดือนรายหมวด แจ้งเตือนเมื่อใช้ถึง 80% และ 100% และพิมพ์ `#ชื่อหมวด` ในช่องจดด่วนได้ |
+| ⚖️ **เช็กยอดจริงและเตือนตอนเย็น** | กรอกยอดจริงของบัญชีเพื่อดูส่วนต่าง แตกเป็นรายการที่จำได้ ส่วนที่เหลือลงหมวด "ไม่ระบุ" (แสดงแยกในสถิติ) + ย่อแอปไปที่ tray, เปิดพร้อมเครื่อง (ปิดไว้เป็นค่าเริ่มต้น) และแจ้งเตือน 20:00 เฉพาะวันที่ยังไม่ได้จด |
+| 🧭 **เมนูเครื่องมือ & Dashboard ใหม่** | เหลือ 6 แท็บหลัก ภาษี/หมวดหมู่/ข้อมูล/ตั้งค่า อยู่ในเมนูเครื่องมือ Dashboard เรียง งบที่ใช้ได้ → ยอดบัญชี → สิ่งที่ต้องจัดการ → ตัวเลขเดือนนี้ และ Ledger มีคอลัมน์/ตัวกรองบัญชี แถวโอนแบบแถวเดียว และยอดคงเหลือสะสมเมื่อเลือกบัญชีเดียว |
+| 🎯 **เควสต์นิสัยการเงิน** | เช็กยอดจริงสัปดาห์ละครั้ง (+30 XP) และจบเดือนโดยไม่มีหมวดเกินงบ (+100 XP) ตรวจจากข้อมูลจริง ได้รางวัลครั้งเดียวต่อรอบ |
 | 🧮 **คำนวณภาษีเงินได้บุคคลธรรมดา (Tax Planner)** | คำนวณอัตราภาษีขั้นบันได 0%-35% พร้อมรองรับค่าลดหย่อนภาษีไทยครบวงจร (ประกันสังคม, กองทุน PVD, RMF, SSF, ThaiESG, Easy E-Receipt, ประกันชีวิต/สุขภาพ, ดอกเบี้ยบ้าน) |
 | 📊 **ศูนย์วิเคราะห์ข้อมูล (Analytics Hub)** | กราฟวงกลม Donut Chart และกราฟแท่งเปรียบเทียบสัดส่วนรายจ่ายแยกหมวดหมู่ |
 | ⚔️ **ระบบเควสต์ & เลเวล (Quests & Growth)** | ภารกิจรายวันเก็บ XP เลื่อนระดับจาก Novice สู่ Grandmaster พร้อมเหรียญความสำเร็จ |

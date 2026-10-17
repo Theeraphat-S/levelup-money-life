@@ -391,7 +391,12 @@ interface AmountCandidate {
 /**
  * Main parser function: Converts a raw single-line natural language text to a structured transaction.
  */
-export function parseQuickInput(input: string): ParsedQuickTransaction {
+export type QuickParseOptions = {
+  accountAliases?: string[]; // Lowercased account aliases that "@alias" may refer to
+  categoryTags?: Record<string, string>; // Lowercased custom category names -> category id
+};
+
+export function parseQuickInput(input: string, options: QuickParseOptions = {}): ParsedQuickTransaction {
   if (!input) {
     return {
       isValid: false,
@@ -433,6 +438,20 @@ export function parseQuickInput(input: string): ParsedQuickTransaction {
     text = text.substring(0, noteMatch.index).trim();
   }
 
+  // 1b. Detect account alias "@kb" (takes priority over "@category" tags)
+  let accountAlias: string | undefined;
+  const aliasSet = new Set((options.accountAliases ?? []).map((alias) => alias.toLowerCase()));
+  if (aliasSet.size > 0) {
+    for (const match of text.matchAll(/(?:^|\s)@([\w\u0E00-\u0E7F-]+)/g)) {
+      const key = match[1].toLowerCase();
+      if (aliasSet.has(key)) {
+        accountAlias = key;
+        text = text.replace(`@${match[1]}`, " ").replace(/\s+/g, " ").trim();
+        break;
+      }
+    }
+  }
+
   // 2. Detect Category tags: #tag, @tag, [tag], (tag)
   let explicitCategory: TransactionCategory | undefined;
 
@@ -447,11 +466,22 @@ export function parseQuickInput(input: string): ParsedQuickTransaction {
     const match = text.match(pattern);
     if (match) {
       const tagKey = match[1].toLowerCase();
-      if (CATEGORY_TAG_MAP[tagKey]) {
-        explicitCategory = CATEGORY_TAG_MAP[tagKey];
+      const tagged = options.categoryTags?.[tagKey] ?? CATEGORY_TAG_MAP[tagKey];
+      if (tagged) {
+        explicitCategory = tagged;
         text = text.replace(match[0], " ").trim();
         break;
       }
+    }
+  }
+
+  // 2b. Any "@word" left over is a typo'd account alias once aliases are in use
+  let unknownAccountAlias: string | undefined;
+  if (aliasSet.size > 0) {
+    const leftover = text.match(/(?:^|\s)@([\w\u0E00-\u0E7F-]+)/);
+    if (leftover) {
+      unknownAccountAlias = leftover[1];
+      text = text.replace(`@${leftover[1]}`, " ").replace(/\s+/g, " ").trim();
     }
   }
 
@@ -581,6 +611,8 @@ export function parseQuickInput(input: string): ParsedQuickTransaction {
       category: explicitCategory || inferCategoryFromText(raw),
       type: isIncome ? "income" : "expense",
       notes,
+      accountAlias,
+      unknownAccountAlias,
       raw,
       error: 'Please include a valid amount (e.g. "กะเพรา 65")',
     };
@@ -607,12 +639,15 @@ export function parseQuickInput(input: string): ParsedQuickTransaction {
   const finalAmount = isIncome ? Math.abs(amount) : -Math.abs(amount);
 
   return {
-    isValid: true,
+    isValid: !unknownAccountAlias,
     name,
     amount: finalAmount,
     category,
     type: isIncome ? "income" : "expense",
     notes,
+    accountAlias,
+    unknownAccountAlias,
     raw,
+    ...(unknownAccountAlias ? { error: `Unknown account @${unknownAccountAlias}` } : {}),
   };
 }

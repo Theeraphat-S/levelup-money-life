@@ -10,6 +10,7 @@ import {
   Legend,
 } from "recharts";
 import {
+  Tag,
   MagicWand,
   Scales,
   WarningCircle,
@@ -18,15 +19,19 @@ import {
 import { useTranslation } from "react-i18next";
 import { BentoCard } from "../common/BentoCard";
 import { RecurringBillsManager } from "../RecurringBills";
+import { CategoryBudgetRow } from "../CategoryBudgetRow";
+import { useCategories } from "../../hooks/useCategories";
+import { limitsByBucket } from "../../utils/categories";
+import type { CardBillOccurrence } from "../../utils/cardBills";
 import {
   BUCKET_COLORS,
-  CATEGORY_BUCKET_MAP,
-  CATEGORY_COLORS,
   type Allocation,
   type BudgetBucket,
   type RecurringBill,
   type RecurringBillPayment,
   type Transaction,
+  type Account,
+  type Transfer,
 } from "../../types";
 
 const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
@@ -40,7 +45,13 @@ interface BudgetPlannerProps {
   activeMonth: string;
   recurringBills: RecurringBill[];
   onSaveBills: (bills: RecurringBill[]) => void;
-  onPayBill: (bill: RecurringBill, payment: RecurringBillPayment) => Promise<void>;
+  onPayBill: (bill: RecurringBill, payment: RecurringBillPayment, accountId?: string) => Promise<void>;
+  cardBills?: CardBillOccurrence[];
+  accounts?: Account[];
+  defaultAccountId?: string;
+  onPayCard?: (transfer: Transfer) => void;
+  onSetCategoryLimit?: (categoryId: string, limit: number | undefined) => void;
+  onManageCategories?: () => void;
 }
 
 export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
@@ -53,8 +64,16 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
   recurringBills,
   onSaveBills,
   onPayBill,
+  cardBills,
+  accounts,
+  defaultAccountId,
+  onPayCard,
+  onSetCategoryLimit,
+  onManageCategories,
 }) => {
   const { t } = useTranslation();
+  const categories = useCategories();
+  const bucketLimits = limitsByBucket(categories.list);
 
   const totalPercent = allocations.reduce((sum, a) => sum + a.percent, 0);
   const isBalanced = totalPercent === 100;
@@ -75,7 +94,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
     .filter((tx) => tx.amount < 0)
     .forEach((tx) => {
       if (tx.category !== "Income") {
-        const bucket = CATEGORY_BUCKET_MAP[tx.category] || "Wants";
+        const bucket = categories.bucket(tx.category);
         const absAmount = Math.abs(tx.amount);
         bucketActuals[bucket] += absAmount;
         categoryActuals[tx.category] = (categoryActuals[tx.category] || 0) + absAmount;
@@ -158,6 +177,17 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
               </div>
             </div>
 
+            {onManageCategories && (
+              <button
+                type="button"
+                onClick={onManageCategories}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-subtle)] transition shadow-xs"
+              >
+                <Tag size={15} weight="duotone" className="text-[var(--primary)]" />
+                <span>{t("categories.manage")}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={apply503020}
@@ -196,7 +226,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
             )}
           </div>
           <span className="font-mono font-bold text-[var(--color-ink)]">
-            Total Allocated: {totalPercent}%
+            {t("ux.totalAllocated", { percent: totalPercent })}
           </span>
         </div>
       </BentoCard>
@@ -218,9 +248,11 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
               : 0;
 
           // Categories under this bucket
-          const categoriesInBucket = Object.entries(CATEGORY_BUCKET_MAP)
-            .filter(([_, b]) => b === bucketKey)
-            .map(([cat]) => cat);
+          // Hidden categories still show here while they have spending this month
+          const categoriesInBucket = categories.list
+            .filter((c) => c.bucket === bucketKey && (!c.hidden || (categoryActuals[c.id] ?? 0) > 0))
+            .map((c) => c.id);
+          const limitTotal = bucketLimits[bucketKey];
 
           return (
             <BentoCard
@@ -250,7 +282,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                 {/* Slider */}
                 <div>
                   <div className="flex items-center justify-between text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
-                    <span>Allocation Slider</span>
+                    <span>{t("ux.allocationSlider")}</span>
                     <span className="font-mono text-[var(--color-ink)] font-bold">{percent}%</span>
                   </div>
                   <input
@@ -290,7 +322,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                   </div>
 
                   <div className="mt-2 flex items-center justify-between text-xs">
-                    <span className="text-[var(--color-ink-soft)]">{consumedPct}% of budget</span>
+                    <span className="text-[var(--color-ink-soft)]">{t("ux.budgetUsed", { amount: consumedPct })}</span>
                     <span
                       className={`font-semibold ${
                         isOver ? "text-[var(--rose-ink)]" : "text-[var(--jade-ink)]"
@@ -305,28 +337,20 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
 
                 {/* Category breakdown under bucket */}
                 <div className="pt-2">
-                  <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-ink-soft)] mb-2">
-                    Included Categories
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
+                      {t("categories.included")}
+                    </span>
+                    {limitTotal > 0 && (
+                      <span className={`text-xs font-semibold ${plannedAmount > 0 && limitTotal > plannedAmount ? "text-[var(--rose-ink)]" : "text-[var(--color-ink-soft)]"}`}>
+                        {t("categories.limitsRollup", { total: thb.format(limitTotal), planned: thb.format(plannedAmount) })}
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-1.5">
-                    {categoriesInBucket.map((cat) => {
-                      const spent = categoryActuals[cat] || 0;
-                      const catColor = CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS];
-                      return (
-                        <div
-                          key={cat}
-                          className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-line)]"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: catColor }} />
-                            <span>{t(`category.${cat}`)}</span>
-                          </div>
-                          <span className="font-mono text-[var(--color-ink-soft)]">
-                            ฿{thb.format(spent)}
-                          </span>
-                        </div>
-                      );
-                    })}
+                    {categoriesInBucket.map((cat) => (
+                      <CategoryBudgetRow key={cat} categoryId={cat} spent={categoryActuals[cat] || 0} onSetLimit={onSetCategoryLimit} />
+                    ))}
                   </div>
                 </div>
               </div>
@@ -343,6 +367,10 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
             activeMonth={activeMonth}
             onSaveBills={onSaveBills}
             onPayBill={onPayBill}
+            cardBills={cardBills}
+            accounts={accounts}
+            defaultAccountId={defaultAccountId}
+            onPayCard={onPayCard}
           />
         </div>
       </BentoCard>

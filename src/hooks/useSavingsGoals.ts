@@ -131,6 +131,7 @@ export function useSavingsGoals(props?: UseSavingsGoalsProps) {
         onAddTransaction({
           name: txName || `${goal.title}`,
           amount: -Math.abs(amount),
+          ...(goal.accountId ? { counterAccountId: goal.accountId } : {}),
           date: todayStr,
           category: "Savings",
           cleared: true,
@@ -178,6 +179,7 @@ export function useSavingsGoals(props?: UseSavingsGoalsProps) {
         onAddTransaction({
           name: txName || `${goal.title}`,
           amount: Math.abs(amount),
+          ...(goal.accountId ? { counterAccountId: goal.accountId } : {}),
           date: todayStr,
           category: "Savings",
           cleared: true,

@@ -8,36 +8,15 @@ export const TRANSACTION_CATEGORIES = [
   "Fun",
   "Debt",
   "Savings",
+  "Unaccounted", // Shortfalls found by a balance check
 ] as const;
 
-export const EXPENSE_CATEGORIES = TRANSACTION_CATEGORIES.filter((category) => category !== "Income");
+// Built-in category ids. Users can add more, so a category is any string id (see utils/categories).
+export type BuiltInCategory = (typeof TRANSACTION_CATEGORIES)[number];
 
-export type TransactionCategory = (typeof TRANSACTION_CATEGORIES)[number];
+export type TransactionCategory = BuiltInCategory | (string & {});
 
 export type BudgetBucket = "Needs" | "Wants" | "Savings";
-
-export const CATEGORY_BUCKET_MAP: Record<Exclude<TransactionCategory, "Income">, BudgetBucket> = {
-  Food: "Needs",
-  Transport: "Needs",
-  Home: "Needs",
-  Health: "Needs",
-  Learning: "Wants",
-  Fun: "Wants",
-  Debt: "Savings",
-  Savings: "Savings",
-};
-
-export const CATEGORY_COLORS: Record<TransactionCategory, string> = {
-  Income: "#4D8E75",    // Soft Jade (Growth / Income)
-  Food: "#C99A4B",      // Muted Amber (Living necessity / Daily)
-  Transport: "#1C5954", // Deep Teal (Core structure)
-  Home: "#879B62",      // Moss (Secondary / Domestic)
-  Health: "#879B62",    // Moss (Wellness / Secondary)
-  Learning: "#1C5954",  // Deep Teal (Growth investment)
-  Fun: "#C99A4B",       // Muted Amber (Lifestyle / Leisure)
-  Debt: "#B96D69",      // Clay Rose (Expense / Obligation)
-  Savings: "#4D8E75",   // Soft Jade (Positive Savings Goal)
-};
 
 export const BUCKET_COLORS: Record<BudgetBucket, string> = {
   Needs: "#1C5954",   // Deep Teal
@@ -61,6 +40,36 @@ export type Transaction = {
   category: TransactionCategory;
   cleared: boolean;
   notes?: string;
+  accountId?: string; // Missing on legacy rows; resolved to the default account
+  // Savings deposits into a goal linked to an account: the money lands there (balance -= amount)
+  counterAccountId?: string;
+};
+
+export const ACCOUNT_TYPES = ["cash", "bank", "ewallet", "credit"] as const;
+
+export type AccountType = (typeof ACCOUNT_TYPES)[number];
+
+export type Account = {
+  id: string;
+  name: string;
+  type: AccountType;
+  openingBalance: number; // Negative for credit card debt carried in
+  alias?: string; // Short handle for quick input, e.g. "kb"
+  statementDay?: number; // Credit cards: day the statement is cut (1-31)
+  dueDay?: number; // Credit cards: day payment is due (1-31)
+  lastBalanceCheck?: string; // Date the real balance was last compared (YYYY-MM-DD)
+  archived: boolean;
+  createdAt: string;
+};
+
+// Moves money between two accounts; never counted as income or expense.
+export type Transfer = {
+  id: string;
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number; // Always positive
+  date: string;
+  notes?: string;
 };
 
 export type PresetItem = {
@@ -72,6 +81,7 @@ export type PresetItem = {
   type?: "expense" | "income";
   usageCount?: number;
   isCustom?: boolean;
+  accountId?: string; // Logs into this account instead of the default one
 };
 
 export type ParsedQuickTransaction = {
@@ -81,6 +91,8 @@ export type ParsedQuickTransaction = {
   category: TransactionCategory;
   type: "expense" | "income";
   notes?: string;
+  accountAlias?: string; // Matched "@alias" for an account, lowercased
+  unknownAccountAlias?: string; // "@word" that is neither an account nor a category tag
   raw: string;
   error?: string;
 };
@@ -163,6 +175,7 @@ export type SavingsGoal = {
   color?: string;
   status: "active" | "completed" | "archived";
   milestonesReached: number[]; // e.g. [25, 50, 75, 100]
+  accountId?: string; // Optional account where this money is actually kept
   createdAt: string;
   updatedAt: string;
 };

@@ -40,6 +40,18 @@ async function initTables(db: Database) {
     // Column already exists
   }
 
+  // Accounts migration: legacy rows keep NULL and resolve to the default account on load
+  try {
+    await db.execute(`ALTER TABLE transactions ADD COLUMN account_id TEXT`);
+  } catch {
+    // Column already exists
+  }
+  try {
+    await db.execute(`ALTER TABLE transactions ADD COLUMN counter_account_id TEXT`);
+  } catch {
+    // Column already exists
+  }
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS allocations (
       id TEXT PRIMARY KEY,
@@ -77,6 +89,12 @@ async function initTables(db: Database) {
     )
   `);
 
+  try {
+    await db.execute(`ALTER TABLE savings_goals ADD COLUMN account_id TEXT`);
+  } catch {
+    // Column already exists
+  }
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
@@ -102,13 +120,17 @@ export async function getTransactions(): Promise<Transaction[]> {
       category: string;
       cleared: number;
       notes?: string;
+      account_id?: string | null;
+      counter_account_id?: string | null;
     }>>("SELECT * FROM transactions ORDER BY date DESC");
 
-    return rows.map((r) => ({
+    return rows.map(({ account_id, counter_account_id, ...r }) => ({
       ...r,
       category: r.category as Transaction["category"],
       cleared: Boolean(r.cleared),
       notes: r.notes || "",
+      ...(account_id ? { accountId: account_id } : {}),
+      ...(counter_account_id ? { counterAccountId: counter_account_id } : {}),
     }));
   } catch (err) {
     console.error("Failed to get transactions from db:", err);
@@ -122,16 +144,18 @@ export async function saveTransaction(tx: Transaction): Promise<void> {
     const db = await getDb();
     if (db) {
       await db.execute(
-        `INSERT INTO transactions (id, name, amount, date, category, cleared, notes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO transactions (id, name, amount, date, category, cleared, notes, account_id, counter_account_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT(id) DO UPDATE SET
            name=excluded.name,
            amount=excluded.amount,
            date=excluded.date,
            category=excluded.category,
            cleared=excluded.cleared,
-           notes=excluded.notes`,
-        [tx.id, tx.name, tx.amount, tx.date, tx.category, tx.cleared ? 1 : 0, tx.notes || ""]
+           notes=excluded.notes,
+           account_id=excluded.account_id,
+           counter_account_id=excluded.counter_account_id`,
+        [tx.id, tx.name, tx.amount, tx.date, tx.category, tx.cleared ? 1 : 0, tx.notes || "", tx.accountId ?? null, tx.counterAccountId ?? null]
       );
     }
   } catch (err) {
@@ -160,11 +184,12 @@ export async function saveAllTransactions(txs: Transaction[]): Promise<void> {
   const payload = JSON.stringify(txs);
   // Insert the complete snapshot before removing old rows. Each SQL statement
   // is atomic; failure leaves existing rows intact and can safely be retried.
-  await db.execute(`INSERT OR REPLACE INTO transactions (id, name, amount, date, category, cleared, notes)
+  await db.execute(`INSERT OR REPLACE INTO transactions (id, name, amount, date, category, cleared, notes, account_id, counter_account_id)
     SELECT json_extract(value, '$.id'), json_extract(value, '$.name'),
       json_extract(value, '$.amount'), json_extract(value, '$.date'),
       json_extract(value, '$.category'), json_extract(value, '$.cleared'),
-      COALESCE(json_extract(value, '$.notes'), '') FROM json_each($1)`, [payload]);
+      COALESCE(json_extract(value, '$.notes'), ''), json_extract(value, '$.accountId'),
+      json_extract(value, '$.counterAccountId') FROM json_each($1)`, [payload]);
   await db.execute("DELETE FROM transactions WHERE id NOT IN (SELECT json_extract(value, '$.id') FROM json_each($1))", [payload]);
 }
 
@@ -368,6 +393,7 @@ export async function getSavingsGoals(): Promise<SavingsGoal[]> {
       milestones_reached: string;
       created_at: string;
       updated_at: string;
+      account_id?: string | null;
     }>>("SELECT * FROM savings_goals ORDER BY created_at ASC");
 
     if (rows.length === 0) {
@@ -390,6 +416,7 @@ export async function getSavingsGoals(): Promise<SavingsGoal[]> {
       milestonesReached: r.milestones_reached ? JSON.parse(r.milestones_reached) : [],
       createdAt: r.created_at,
       updatedAt: r.updated_at,
+      ...(r.account_id ? { accountId: r.account_id } : {}),
     }));
   } catch (err) {
     console.error("Failed to get savings goals:", err);
@@ -410,8 +437,8 @@ export async function saveSavingsGoal(goal: SavingsGoal): Promise<void> {
     const db = await getDb();
     if (db) {
       await db.execute(
-        `INSERT INTO savings_goals (id, title, category, target_amount, current_amount, target_date, icon, color, status, milestones_reached, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        `INSERT INTO savings_goals (id, title, category, target_amount, current_amount, target_date, icon, color, status, milestones_reached, created_at, updated_at, account_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          ON CONFLICT(id) DO UPDATE SET
            title=excluded.title,
            category=excluded.category,
@@ -422,7 +449,8 @@ export async function saveSavingsGoal(goal: SavingsGoal): Promise<void> {
            color=excluded.color,
            status=excluded.status,
            milestones_reached=excluded.milestones_reached,
-           updated_at=excluded.updated_at`,
+           updated_at=excluded.updated_at,
+           account_id=excluded.account_id`,
         [
           goal.id,
           goal.title,
@@ -436,6 +464,7 @@ export async function saveSavingsGoal(goal: SavingsGoal): Promise<void> {
           JSON.stringify(goal.milestonesReached || []),
           goal.createdAt,
           goal.updatedAt,
+          goal.accountId ?? null,
         ]
       );
     }
@@ -453,8 +482,8 @@ export async function saveAllSavingsGoals(goals: SavingsGoal[]): Promise<void> {
       for (const goal of goals) {
         await db.execute(
           `INSERT OR REPLACE INTO savings_goals (
-            id, title, category, target_amount, current_amount, target_date, icon, color, status, milestones_reached, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            id, title, category, target_amount, current_amount, target_date, icon, color, status, milestones_reached, created_at, updated_at, account_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             goal.id,
             goal.title,
@@ -468,6 +497,7 @@ export async function saveAllSavingsGoals(goals: SavingsGoal[]): Promise<void> {
             JSON.stringify(goal.milestonesReached || []),
             goal.createdAt,
             goal.updatedAt,
+            goal.accountId ?? null,
           ]
         );
       }

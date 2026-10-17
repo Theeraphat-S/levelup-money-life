@@ -21,9 +21,11 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
+import { CustomSelect } from "./common/CustomSelect";
+import { CategoryPicker } from "./common/CategoryPicker";
+import { guessAccountForBank } from "../utils/accounts";
 import {
-  EXPENSE_CATEGORIES,
-  CATEGORY_COLORS,
+  type Account,
   type Transaction,
   type TransactionCategory,
 } from "../types";
@@ -49,6 +51,7 @@ export interface SlipQueueItem {
   category: TransactionCategory;
   cleared: boolean;
   notes: string;
+  accountId: string; // "" = default account
 }
 
 interface SlipScanModalProps {
@@ -57,6 +60,7 @@ interface SlipScanModalProps {
   onSave: (tx: Transaction, xpBonus: number) => void | Promise<void>;
   onSaveBatch?: (txs: Transaction[], totalXpBonus: number) => void | Promise<void>;
   initialFiles?: (File | string)[] | null;
+  accounts?: Account[];
 }
 
 export const SlipScanModal: React.FC<SlipScanModalProps> = ({
@@ -65,8 +69,13 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
   onSave,
   onSaveBatch,
   initialFiles,
+  accounts = [],
 }) => {
   const { t } = useTranslation();
+  const activeAccounts = accounts.filter((a) => !a.archived);
+  // Read inside the async parser callback without restarting in-flight scans
+  const accountsRef = useRef<Account[]>(accounts);
+  accountsRef.current = accounts;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addMoreInputRef = useRef<HTMLInputElement>(null);
 
@@ -128,6 +137,10 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                 category: result.suggestedCategory,
                 notes: result.notes || "",
                 cleared: true,
+                // Outgoing slips come from the payer's own bank app, so the bank tells us the account
+                accountId: result.transactionType === "expense"
+                  ? guessAccountForBank(result.bankName, accountsRef.current) ?? ""
+                  : "",
               };
             }
             return q;
@@ -180,6 +193,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
           category: "Food",
           cleared: true,
           notes: "",
+          accountId: "",
         };
       });
 
@@ -336,6 +350,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
       category: finalCategory,
       cleared: item.cleared,
       notes: item.notes.trim(),
+      ...(item.accountId ? { accountId: item.accountId } : {}),
     };
   };
 
@@ -347,7 +362,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
 
     const tx = itemToTransaction(currentItem);
     if (!tx) {
-      setFormError("Please enter a valid amount and description");
+      setFormError(t("ux.amountRequired"));
       return;
     }
 
@@ -391,7 +406,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
     });
 
     if (validTxs.length === 0) {
-      setFormError("No valid slip items to save");
+      setFormError(t("ux.noSlipToSave"));
       return;
     }
 
@@ -714,7 +729,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                       <div className="relative aspect-3/4 max-h-[380px] w-full overflow-hidden rounded-xl bg-black/5 dark:bg-black/20 flex items-center justify-center">
                         <img
                           src={currentItem.previewUrl}
-                          alt="Slip Preview"
+                          alt={t("ux.slipPreview")}
                           className="h-full w-full object-contain"
                         />
 
@@ -809,7 +824,7 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                         )}
 
                         <div className="flex items-center justify-between pt-0.5">
-                          <span className="font-semibold text-[var(--color-ink-soft)]">Engine</span>
+                          <span className="font-semibold text-[var(--color-ink-soft)]">{t("ux.engine")}</span>
                           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
                             <CheckCircle size={12} weight="fill" />
                             {currentItem.result.engine === "gemini"
@@ -950,36 +965,31 @@ export const SlipScanModal: React.FC<SlipScanModalProps> = ({
                         />
                       </div>
 
+                      {activeAccounts.length > 1 && (
+                        <div>
+                          <span className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
+                            {t("accounts.fieldLabel")}
+                          </span>
+                          <CustomSelect
+                            value={currentItem.accountId}
+                            onChange={(value) => updateCurrentItem({ accountId: value })}
+                            ariaLabel={t("accounts.fieldLabel")}
+                            className="w-full"
+                            options={[
+                              { value: "", label: t("accounts.useDefault"), textValue: t("accounts.useDefault") },
+                              ...activeAccounts.map((a) => ({ value: a.id, label: a.name, textValue: a.name, badge: t(`accounts.types.${a.type}`) })),
+                            ]}
+                          />
+                        </div>
+                      )}
+
                       {/* Category Selection (If Expense) */}
                       {currentItem.type === "expense" && (
                         <div>
                           <label className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1.5">
                             {t("quickAdd.categoryLabel")}
                           </label>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                            {EXPENSE_CATEGORIES.map((cat) => {
-                              const isSelected = currentItem.category === cat;
-                              const catColor = CATEGORY_COLORS[cat];
-                              return (
-                                <button
-                                  key={cat}
-                                  type="button"
-                                  onClick={() => updateCurrentItem({ category: cat })}
-                                  className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
-                                    isSelected
-                                      ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary-ink)] font-semibold shadow-xs"
-                                      : "border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-subtle)]"
-                                  }`}
-                                >
-                                  <span
-                                    className="h-2 w-2 rounded-full shrink-0"
-                                    style={{ backgroundColor: catColor }}
-                                  />
-                                  <span className="truncate">{t(`category.${cat}`)}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
+                          <CategoryPicker value={currentItem.category} onChange={(cat) => updateCurrentItem({ category: cat })} />
                         </div>
                       )}
 

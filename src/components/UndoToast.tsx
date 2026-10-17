@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { SPRING } from "../constants/motion";
 import { ArrowUUpLeft, CheckCircle, Sparkle, X } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
+import { useCategories } from "../hooks/useCategories";
 import type { Transaction } from "../types";
 
 const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
@@ -25,6 +26,7 @@ export const UndoToast: React.FC<UndoToastProps> = ({
   durationMs = 5000,
 }) => {
   const { t } = useTranslation();
+  const categories = useCategories();
   const [timeLeftMs, setTimeLeftMs] = useState(durationMs);
 
   const onDismissRef = useRef(onDismiss);
@@ -38,15 +40,15 @@ export const UndoToast: React.FC<UndoToastProps> = ({
 
     setTimeLeftMs(durationMs);
     const interval = 100;
+    const deadline = Date.now() + durationMs;
+    // Dismiss outside the state updater so the parent is never updated mid-render
     const timer = setInterval(() => {
-      setTimeLeftMs((prev) => {
-        if (prev <= interval) {
-          clearInterval(timer);
-          onDismissRef.current();
-          return 0;
-        }
-        return prev - interval;
-      });
+      const left = Math.max(0, deadline - Date.now());
+      setTimeLeftMs(left);
+      if (left <= 0) {
+        clearInterval(timer);
+        onDismissRef.current();
+      }
     }, interval);
 
     return () => clearInterval(timer);
@@ -101,7 +103,7 @@ export const UndoToast: React.FC<UndoToastProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-[var(--color-ink-soft)]">
-                  <span>{t(`category.${transaction.category}`)}</span>
+                  <span>{categories.label(transaction.category)}</span>
                   <span>·</span>
                   <span className="inline-flex items-center gap-0.5 font-bold text-[var(--jade-ink)]">
                     <Sparkle size={11} weight="fill" />

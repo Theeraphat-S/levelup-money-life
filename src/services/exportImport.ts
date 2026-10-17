@@ -1,5 +1,11 @@
-import type { Allocation, GamificationState, PresetItem, Quest, RecurringBill, SavingsGoal, TaxProfile, Transaction, TransactionCategory } from "../types";
+import type { Account, Allocation, GamificationState, PresetItem, Quest, RecurringBill, SavingsGoal, TaxProfile, Transaction, TransactionCategory, Transfer } from "../types";
 import { TRANSACTION_CATEGORIES } from "../types";
+import type { CategoryDef } from "../utils/categories";
+
+// Built-in ids, or custom ids created by the category manager ("cat-…")
+function isKnownCategoryId(value: string): boolean {
+  return (TRANSACTION_CATEGORIES as readonly string[]).includes(value) || /^cat-[\w-]+$/.test(value);
+}
 
 /**
  * Escapes a string field for CSV RFC 4180
@@ -17,7 +23,7 @@ function escapeCSVField(str: string | number | boolean | undefined | null): stri
  * Exports transactions to a downloadable CSV file
  */
 export function exportToCSV(transactions: Transaction[], filename?: string): void {
-  const headers = ["ID", "Name", "Amount", "Date", "Category", "Cleared", "Notes"];
+  const headers = ["ID", "Name", "Amount", "Date", "Category", "Cleared", "Notes", "Account"];
   const rows = transactions.map((t) => [
     escapeCSVField(t.id),
     escapeCSVField(t.name),
@@ -26,6 +32,7 @@ export function exportToCSV(transactions: Transaction[], filename?: string): voi
     escapeCSVField(t.category),
     escapeCSVField(t.cleared ? "true" : "false"),
     escapeCSVField(t.notes || ""),
+    escapeCSVField(t.accountId || ""),
   ]);
 
   const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
@@ -91,6 +98,7 @@ export function parseCSV(csvText: string): Transaction[] {
     let category: TransactionCategory = "Food";
     let cleared = false;
     let notes = "";
+    let accountId: string | undefined;
 
     if (cols.length >= 5 && cols[0].includes("-") && cols[0].length > 10) {
       // Has ID
@@ -99,16 +107,17 @@ export function parseCSV(csvText: string): Transaction[] {
       amount = parseFloat(cols[2]) || 0;
       date = cols[3] || date;
       const cat = cols[4] as TransactionCategory;
-      category = (TRANSACTION_CATEGORIES as readonly string[]).includes(cat) ? cat : "Food";
+      category = isKnownCategoryId(cat) ? cat : "Food";
       cleared = cols[5]?.toLowerCase() === "true" || cols[5] === "1";
       notes = cols[6] || "";
+      accountId = cols[7] || undefined;
     } else {
       // Basic format: Name, Amount, Date, Category
       name = cols[0] || "Entry";
       amount = parseFloat(cols[1]) || 0;
       date = cols[2] || date;
       const cat = cols[3] as TransactionCategory;
-      category = (TRANSACTION_CATEGORIES as readonly string[]).includes(cat) ? cat : "Food";
+      category = isKnownCategoryId(cat) ? cat : "Food";
       cleared = cols[4]?.toLowerCase() === "true" || cols[4] === "1";
       notes = cols[5] || "";
     }
@@ -121,6 +130,7 @@ export function parseCSV(csvText: string): Transaction[] {
       category,
       cleared,
       notes,
+      ...(accountId ? { accountId } : {}),
     });
   }
 
@@ -139,6 +149,10 @@ export type BackupData = {
   presets?: PresetItem[];
   savingsGoals?: SavingsGoal[];
   recurringBills?: RecurringBill[];
+  accounts?: Account[]; // Added in 5.0.0; older backups restore into the default account
+  transfers?: Transfer[];
+  defaultAccountId?: string;
+  categories?: CategoryDef[]; // Added in 5.1.0; older backups keep the current categories
 };
 
 /**
@@ -146,7 +160,7 @@ export type BackupData = {
  */
 export function exportBackupJSON(data: Omit<BackupData, "version" | "exportedAt">): void {
   const fullBackup: BackupData = {
-    version: "4.0.0",
+    version: "5.1.0",
     exportedAt: new Date().toISOString(),
     ...data,
   };

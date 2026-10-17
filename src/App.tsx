@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { AnimatePresence, motion, MotionConfig, useReducedMotion, type HTMLMotionProps } from "motion/react";
 import { SPRING, DURATION, easeOut } from "./constants/motion";
 import { CalendarDots, Sparkle } from "@phosphor-icons/react";
@@ -12,6 +12,18 @@ import { UndoToast } from "./components/UndoToast";
 import { QuickAddModal } from "./components/QuickAddModal";
 import { SlipScanModal } from "./components/SlipScanModal";
 import { DataManagerModal } from "./components/DataManagerModal";
+import { AccountManagerModal } from "./components/AccountManagerModal";
+import { CategoryManagerModal } from "./components/CategoryManagerModal";
+import { SettingsModal } from "./components/SettingsModal";
+import { isDesktopApp, sendDesktopNotification, setCloseToTray, setLaunchAtLogin } from "./services/desktop";
+import {
+  DEFAULT_DESKTOP_SETTINGS,
+  reminderDateKey,
+  sanitizeDesktopSettings,
+  shouldSendReminder,
+  type DesktopSettings,
+} from "./utils/reminders";
+import { CategoriesContext } from "./hooks/useCategories";
 import { LevelUpCelebration } from "./components/LevelUpCelebration";
 
 // Views
@@ -33,6 +45,7 @@ import { useQuests } from "./hooks/useQuests";
 import { useTaxProfile } from "./hooks/useTaxProfile";
 import { useBankSlipListener } from "./hooks/useBankSlipListener";
 import { useSavingsGoals } from "./hooks/useSavingsGoals";
+import { useAccounts } from "./hooks/useAccounts";
 
 // Services, Constants & Types
 import {
@@ -57,8 +70,30 @@ import {
   getInitialDates,
 } from "./constants/sampleData";
 import type { BackupData } from "./services/exportImport";
-import type { RecurringBill, RecurringBillPayment, Transaction, ViewTab } from "./types";
+import type { Account, RecurringBill, RecurringBillPayment, Transaction, Transfer, ViewTab } from "./types";
 import { recordBillPayment } from "./utils/recurringBills";
+import { getCardBills } from "./utils/cardBills";
+import { dueSystemAwards, type SystemQuestAwards } from "./utils/systemQuests";
+import {
+  BUILT_IN_CATEGORIES,
+  computeCategoryBudgets,
+  findCategory,
+  isCategoryUsed,
+  mergeWithBuiltIns,
+  newlyCrossedBudgets,
+  type CategoryBudgetStatus,
+  type CategoryDef,
+} from "./utils/categories";
+import { getLocalTodayISO } from "./utils/safeToSpend";
+import {
+  DEFAULT_ACCOUNT_ID,
+  assignMissingAccounts,
+  createDefaultAccount,
+  ensureAccounts,
+  resolveDefaultAccountId,
+  restoreAccountSnapshot,
+  sanitizeTransfers,
+} from "./utils/accounts";
 
 const { today, currentMonthISO } = getInitialDates();
 
@@ -75,6 +110,13 @@ export default function App() {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
   const [quickAddType, setQuickAddType] = useState<"expense" | "income">("expense");
   const [isDataManagerOpen, setIsDataManagerOpen] = useState<boolean>(false);
+  const [isAccountsOpen, setIsAccountsOpen] = useState<boolean>(false);
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [desktopSettings, setDesktopSettings] = useState<DesktopSettings>(DEFAULT_DESKTOP_SETTINGS);
+  const lastReminderRef = useRef<string | null>(null);
+  const systemAwardsRef = useRef<SystemQuestAwards | null>(null);
+  const [categories, setCategories] = useState<CategoryDef[]>(BUILT_IN_CATEGORIES);
   const [recurringBills, setRecurringBills] = useState<RecurringBill[]>([]);
 
   // Domain Hooks
@@ -105,6 +147,7 @@ export default function App() {
   const {
     transactions,
     saveStatus,
+    setDefaultAccountId: setTransactionsDefaultAccount,
     retrySave,
     setTransactions,
     setTransactionsState,
@@ -121,6 +164,25 @@ export default function App() {
     importTransactions,
     initTransactions,
   } = useTransactions();
+
+  const {
+    accounts,
+    transfers,
+    defaultAccountId,
+    initAccounts,
+    saveAccount,
+    setAccountArchived,
+    deleteAccount,
+    setDefaultAccountId,
+    addTransfer,
+    deleteTransfer,
+    replaceAll: replaceAllAccounts,
+  } = useAccounts();
+
+  // New entries without an explicit account follow the user's default account
+  useEffect(() => {
+    setTransactionsDefaultAccount(defaultAccountId);
+  }, [defaultAccountId, setTransactionsDefaultAccount]);
 
   const {
     allocations,
@@ -179,6 +241,95 @@ export default function App() {
     },
   });
 
+  const persistCategories = (next: CategoryDef[]) => {
+    const merged = mergeWithBuiltIns(next);
+    setCategories(merged);
+    void saveSetting("categories", merged);
+  };
+
+  const handleSetCategoryLimit = (categoryId: string, limit: number | undefined) => {
+    persistCategories(categories.map((c) => {
+      if (c.id !== categoryId) return c;
+      const { monthlyLimit: _previous, ...rest } = c;
+      return limit ? { ...rest, monthlyLimit: limit } : rest;
+    }));
+  };
+
+  // Balance check: add the adjusting entries and remember when this account was last verified
+  const handleApplyBalanceCheck = (account: Account, adjustments: Transaction[]) => {
+    if (adjustments.length > 0) setTransactions((prev) => [...adjustments, ...prev]);
+    saveAccount({ ...account, lastBalanceCheck: getLocalTodayISO() });
+    showToast(adjustments.length > 0 ? t("accounts.checkSaved", { count: adjustments.length }) : t("accounts.checkMatched"));
+  };
+
+  const handleDesktopSettings = (next: DesktopSettings) => {
+    if (next.closeToTray !== desktopSettings.closeToTray) void setCloseToTray(next.closeToTray).catch(console.error);
+    if (next.launchAtLogin !== desktopSettings.launchAtLogin) void setLaunchAtLogin(next.launchAtLogin).catch(console.error);
+    setDesktopSettings(next);
+    void saveSetting("desktop", next);
+  };
+
+  // Evening reminder: checked every minute while the app runs (including hidden in the tray)
+  const reminderStateRef = useRef({ settings: desktopSettings, transactions });
+  reminderStateRef.current = { settings: desktopSettings, transactions };
+  useEffect(() => {
+    if (loading || !isDesktopApp()) return;
+    const check = () => {
+      const now = new Date();
+      const { settings, transactions: current } = reminderStateRef.current;
+      if (!shouldSendReminder(now, settings, current, lastReminderRef.current)) return;
+      const today = reminderDateKey(now);
+      lastReminderRef.current = today;
+      void saveSetting("lastReminderDate", today);
+      void sendDesktopNotification(t("reminder.title"), t("reminder.body")).catch(console.error);
+    };
+    check();
+    const timer = window.setInterval(check, 60_000);
+    return () => window.clearInterval(timer);
+  }, [loading, t]);
+
+  // Data-driven quests: reward a weekly balance check and a month that ended within every limit
+  useEffect(() => {
+    if (loading || !systemAwardsRef.current) return;
+    const { awards, next } = dueSystemAwards(systemAwardsRef.current, accounts, categories, transactions, getLocalTodayISO());
+    if (awards.length === 0) return;
+    systemAwardsRef.current = next;
+    void saveSetting("systemQuestAwards", next);
+    awards.forEach((award) => addXp(award.xp));
+    showToast(awards.map((award) => t(`quests.system.award.${award.id}`, { xp: award.xp, period: award.period })).join(" · "), 5000);
+  }, [loading, accounts, categories, transactions, addXp, showToast, t]);
+
+  const categoryInUse = (categoryId: string) => isCategoryUsed(categoryId, transactions, [...presets, ...recurringBills]);
+
+  // Warn once when a category limit for the current month reaches 80% or 100%
+  const budgetStatusRef = useRef<{ month: string; statuses: CategoryBudgetStatus[] } | null>(null);
+  useEffect(() => {
+    if (loading) return;
+    const month = getLocalTodayISO().slice(0, 7);
+    const statuses = computeCategoryBudgets(categories, transactions, month);
+    const previous = budgetStatusRef.current;
+    budgetStatusRef.current = { month, statuses };
+    if (!previous || previous.month !== month) return;
+    const crossed = newlyCrossedBudgets(previous.statuses, statuses);
+    if (crossed.length === 0) return;
+    const worst = crossed.find((status) => status.level === "over") ?? crossed[0];
+    const def = findCategory(categories, worst.id);
+    const name = def.builtIn ? t(`category.${def.id}`) : def.name ?? def.id;
+    const limit = worst.limit.toLocaleString();
+    showToast(
+      worst.level === "over"
+        ? t("categories.alertOver", { name, limit })
+        : t("categories.alertWarn", { name, limit, percent: Math.round(worst.ratio * 100) }),
+      5000
+    );
+  }, [loading, categories, transactions, t, showToast]);
+
+  // Credit card bills due in the selected month (paid by transfer, outside Safe-to-Spend)
+  const cardBills = useMemo(
+    () => getCardBills(accounts, activeMonth, getLocalTodayISO(), transactions, transfers),
+    [accounts, activeMonth, transactions, transfers]
+  );
+
   // Evaluate Active Achievements
   const { allAchievements } = useMemo(() => {
     return evaluateAchievements(
@@ -225,6 +376,26 @@ export default function App() {
         const savedPresets = await getStoredPresets();
         const savedRecurringBills = await getSetting<RecurringBill[]>("recurringBills", []);
         const setupComplete = await getSetting<boolean>("setupComplete", false);
+
+        // Accounts migration: seed a default account and move legacy rows into it
+        const storedAccounts = await getSetting<Account[]>("accounts", []);
+        const loadedAccounts = ensureAccounts(storedAccounts, t("accounts.defaultName"));
+        if (JSON.stringify(loadedAccounts) !== JSON.stringify(storedAccounts)) await saveSetting("accounts", loadedAccounts);
+        const loadedTransfers = sanitizeTransfers(await getSetting<Transfer[]>("transfers", []));
+        const savedDefaultAccount = await getSetting<string>("defaultAccountId", DEFAULT_ACCOUNT_ID);
+        const fallbackAccount = resolveDefaultAccountId(loadedAccounts, savedDefaultAccount);
+        const migratedTxs = assignMissingAccounts(txs, loadedAccounts, fallbackAccount);
+        if (migratedTxs !== txs) {
+          txs = migratedTxs;
+          await saveAllTransactions(txs).catch((err) => console.error("Account migration failed:", err));
+        }
+        initAccounts(loadedAccounts, loadedTransfers, savedDefaultAccount);
+        setCategories(mergeWithBuiltIns(await getSetting<CategoryDef[]>("categories", [])));
+        const savedDesktop = sanitizeDesktopSettings(await getSetting<unknown>("desktop", null));
+        setDesktopSettings(savedDesktop);
+        lastReminderRef.current = await getSetting<string | null>("lastReminderDate", null);
+        systemAwardsRef.current = await getSetting<SystemQuestAwards>("systemQuestAwards", {});
+        void setCloseToTray(savedDesktop.closeToTray).catch((err) => console.error("Tray setting failed:", err));
         setShowSetup(!setupComplete && txs.length === 0);
 
         initTransactions(txs, savedPresets);
@@ -240,7 +411,7 @@ export default function App() {
       }
     }
     loadData();
-  }, [initTransactions, initAllocations, initQuests, initTaxProfile, initGamification]);
+  }, [initTransactions, initAllocations, initQuests, initTaxProfile, initGamification, initAccounts, t]);
 
   // Handle Quick Command Bar / Preset Transaction Logging
   const handleLogQuickTransaction = (newTx: Transaction) => {
@@ -281,7 +452,7 @@ export default function App() {
     persistRecurringBills(nextBills);
   };
 
-  const handlePayRecurringBill = async (bill: RecurringBill, payment: RecurringBillPayment) => {
+  const handlePayRecurringBill = async (bill: RecurringBill, payment: RecurringBillPayment, accountId?: string) => {
     const transaction: Transaction = {
       id: payment.transactionId,
       name: bill.name,
@@ -289,6 +460,7 @@ export default function App() {
       date: payment.paidOn,
       category: bill.category,
       cleared: true,
+      ...(accountId ? { accountId } : {}),
     };
     await saveQuickTransaction(transaction, {
       onAwardXp: addXp,
@@ -363,7 +535,10 @@ export default function App() {
 
   // Restore Complete Backup
   const handleRestoreBackup = (backup: BackupData) => {
-    if (backup.transactions) setTransactions(backup.transactions);
+    const restored = restoreAccountSnapshot(backup, { accounts, transfers, defaultAccountId }, t("accounts.defaultName"));
+    replaceAllAccounts(restored.accounts, restored.transfers);
+    setDefaultAccountId(restored.defaultAccountId);
+    setTransactions(restored.transactions);
     if (backup.allocations) setAllocations(backup.allocations);
     if (backup.quests) setQuests(backup.quests);
     if (typeof backup.income === "number") setIncome(backup.income);
@@ -371,6 +546,7 @@ export default function App() {
     if (backup.presets) setPresets(backup.presets);
     if (backup.savingsGoals) setSavingsGoals(backup.savingsGoals);
     if (backup.recurringBills) persistRecurringBills(backup.recurringBills);
+    if (backup.categories) persistCategories(backup.categories);
     if (backup.gamification?.totalXp) {
       setTotalXp(backup.gamification.totalXp);
     }
@@ -388,6 +564,8 @@ export default function App() {
     await saveSetting("streakDays", 1);
     await saveSetting("unlockedAchievements", ["first_log"]);
     await saveStoredPresets(DEFAULT_PRESETS);
+    replaceAllAccounts([createDefaultAccount(t("accounts.defaultName"))], []);
+    persistCategories(BUILT_IN_CATEGORIES);
 
     setTransactionsState(SAMPLE_TRANSACTIONS);
     setAllocationsState(SAMPLE_ALLOCATIONS);
@@ -420,6 +598,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
+    <CategoriesContext.Provider value={categories}>
     <main className="min-h-[100dvh] px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1400px]">
         {/* Top Header Command Deck */}
@@ -432,6 +611,9 @@ export default function App() {
           onOpenQuickAdd={() => { setQuickAddType("expense"); setIsQuickAddOpen(true); }}
           onOpenScanSlip={() => openSlipScan([])}
           onOpenDataManager={() => setIsDataManagerOpen(true)}
+          onOpenAccounts={() => setIsAccountsOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenCategories={() => setIsCategoriesOpen(true)}
           themeMode={themeMode}
           setThemeMode={setThemeMode}
         />
@@ -459,6 +641,7 @@ export default function App() {
           presets={presets}
           setPresets={setPresets}
           onLogTransaction={handleLogQuickTransaction}
+          accounts={accounts}
           onConfigureBudget={() => setActiveTab("budget")}
         />}
 
@@ -478,6 +661,10 @@ export default function App() {
                 onOpenIncome={() => { setQuickAddType("income"); setIsQuickAddOpen(true); }}
                 savingsGoals={savingsGoals}
                 recurringBills={recurringBills}
+                cardBills={cardBills}
+                accounts={accounts}
+                transfers={transfers}
+                onOpenAccounts={() => setIsAccountsOpen(true)}
               />
             </motion.div>
           )}
@@ -489,6 +676,9 @@ export default function App() {
                 setTransactions={setTransactions}
                 activeMonth={activeMonth}
                 onOpenQuickAdd={() => setIsQuickAddOpen(true)}
+                accounts={accounts}
+                transfers={transfers}
+                onDeleteTransfer={deleteTransfer}
               />
             </motion.div>
           )}
@@ -505,6 +695,12 @@ export default function App() {
                 recurringBills={recurringBills}
                 onSaveBills={handleSaveRecurringBills}
                 onPayBill={handlePayRecurringBill}
+                cardBills={cardBills}
+                accounts={accounts}
+                defaultAccountId={defaultAccountId}
+                onPayCard={(transfer) => { addTransfer(transfer); showToast(t("accounts.transferSaved")); }}
+                onSetCategoryLimit={handleSetCategoryLimit}
+                onManageCategories={() => setIsCategoriesOpen(true)}
               />
             </motion.div>
           )}
@@ -526,6 +722,7 @@ export default function App() {
                 onWithdraw={handleWithdrawFromSavingsGoal}
                 transactions={transactions}
                 activeMonth={activeMonth}
+                accounts={accounts}
               />
             </motion.div>
           )}
@@ -557,6 +754,8 @@ export default function App() {
                 setQuests={setQuests}
                 gamification={gamification}
                 achievements={allAchievements}
+                accounts={accounts}
+                transactions={transactions}
                 onToggleQuest={(id) => toggleQuest(id, addXp)}
               />
             </motion.div>
@@ -579,6 +778,8 @@ export default function App() {
           onOpenScanSlip={() => openSlipScan([])}
           defaultDate={today}
           defaultType={quickAddType}
+          accounts={accounts}
+          defaultAccountId={defaultAccountId}
         />
 
         <SlipScanModal
@@ -590,6 +791,7 @@ export default function App() {
           onSave={handleSaveSlipTransaction}
           onSaveBatch={handleSaveBatchSlipTransactions}
           initialFiles={slipInitialFiles}
+          accounts={accounts}
         />
 
         <DataManagerModal
@@ -604,9 +806,45 @@ export default function App() {
           presets={presets}
           savingsGoals={savingsGoals}
           recurringBills={recurringBills}
+          accounts={accounts}
+          transfers={transfers}
+          defaultAccountId={defaultAccountId}
+          categories={categories}
           onRestoreBackup={handleRestoreBackup}
-          onImportTransactions={(txs) => { void importTransactions(txs, { onAwardXp: addXp }).catch(() => {}); }}
+          onImportTransactions={(txs) => { void importTransactions(assignMissingAccounts(txs, accounts, defaultAccountId), { onAwardXp: addXp }).catch(() => {}); }}
           onResetData={handleResetData}
+        />
+
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          settings={desktopSettings}
+          onChange={handleDesktopSettings}
+          isDesktop={isDesktopApp()}
+          onTestNotification={() => sendDesktopNotification(t("reminder.title"), t("reminder.body")).catch(() => false)}
+        />
+
+        <CategoryManagerModal
+          isOpen={isCategoriesOpen}
+          onClose={() => setIsCategoriesOpen(false)}
+          onSave={persistCategories}
+          isUsed={categoryInUse}
+        />
+
+        <AccountManagerModal
+          isOpen={isAccountsOpen}
+          onClose={() => setIsAccountsOpen(false)}
+          accounts={accounts}
+          transfers={transfers}
+          transactions={transactions}
+          defaultAccountId={defaultAccountId}
+          onSaveAccount={saveAccount}
+          onSetArchived={setAccountArchived}
+          onDeleteAccount={deleteAccount}
+          onSetDefault={setDefaultAccountId}
+          onAddTransfer={(transfer) => { addTransfer(transfer); showToast(t("accounts.transferSaved")); }}
+          onDeleteTransfer={deleteTransfer}
+          onApplyBalanceCheck={handleApplyBalanceCheck}
         />
 
         <LevelUpCelebration
@@ -647,6 +885,7 @@ export default function App() {
         </AnimatePresence>
       </div>
     </main>
+    </CategoriesContext.Provider>
     </MotionConfig>
   );
 }

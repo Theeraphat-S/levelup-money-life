@@ -2,6 +2,8 @@ import React, { useState, useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowDown,
+  ArrowRight,
+  ArrowsLeftRight,
   ArrowUp,
   ArrowUUpLeft,
   CheckCircle,
@@ -15,14 +17,16 @@ import {
 import { useTranslation } from "react-i18next";
 import { BentoCard } from "../common/BentoCard";
 import { CustomSelect, type CustomSelectOption } from "../common/CustomSelect";
-import { CustomDatePicker } from "../common/CustomDatePicker";
+import { CustomDatePicker, formatShortDate } from "../common/CustomDatePicker";
+import { CategoryIcon } from "../common/CategoryIcon";
+import { useCategories } from "../../hooks/useCategories";
+import { DEFAULT_ACCOUNT_ID, runningBalances } from "../../utils/accounts";
 import {
-  CATEGORY_COLORS,
-  EXPENSE_CATEGORIES,
-  TRANSACTION_CATEGORIES,
   type SortField,
   type SortOrder,
   type Transaction,
+  type Account,
+  type Transfer,
   type TransactionCategory,
 } from "../../types";
 
@@ -33,19 +37,32 @@ interface TransactionLedgerProps {
   setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
   activeMonth: string;
   onOpenQuickAdd: () => void;
+  accounts?: Account[];
+  transfers?: Transfer[];
+  onDeleteTransfer?: (id: string) => void;
 }
+
+type LedgerItem = { kind: "tx"; tx: Transaction } | { kind: "transfer"; transfer: Transfer };
 
 export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
   transactions,
   setTransactions,
   activeMonth,
   onOpenQuickAdd,
+  accounts = [],
+  transfers = [],
+  onDeleteTransfer,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const categories = useCategories();
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "CLEARED" | "PENDING">("ALL");
+  const [accountFilter, setAccountFilter] = useState<string>("ALL");
+  const showAccounts = accounts.length > 1;
+  const accountName = (id: string | undefined) => accounts.find((a) => a.id === (id ?? DEFAULT_ACCOUNT_ID))?.name ?? "—";
+  const filteredAccount = accountFilter === "ALL" ? undefined : accounts.find((a) => a.id === accountFilter);
   const [isMonthScoped, setIsMonthScoped] = useState(true);
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
@@ -93,18 +110,20 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
     setSearch("");
     setCategoryFilter("ALL");
     setStatusFilter("ALL");
+    setAccountFilter("ALL");
   };
 
   const categoryFilterOptions: CustomSelectOption[] = useMemo(
     () => [
       { value: "ALL", label: t("expense.allCategories") },
-      ...TRANSACTION_CATEGORIES.map((c) => ({
-        value: c,
-        label: t(`category.${c}`),
-        colorDot: CATEGORY_COLORS[c],
+      ...categories.list.map((c) => ({
+        value: c.id,
+        label: categories.label(c.id),
+        textValue: categories.label(c.id),
+        icon: <CategoryIcon category={c.id} />,
       })),
     ],
-    [t]
+    [t, categories]
   );
 
   const statusFilterOptions: CustomSelectOption[] = useMemo(
@@ -116,15 +135,14 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
     [t]
   );
 
-  const expenseCategoryOptions: CustomSelectOption[] = useMemo(
-    () =>
-      EXPENSE_CATEGORIES.map((c) => ({
-        value: c,
-        label: t(`category.${c}`),
-        colorDot: CATEGORY_COLORS[c],
-      })),
-    [t]
-  );
+  // A row keeps its current category in the list even after that category is hidden
+  const expenseCategoryOptions = (current: string): CustomSelectOption[] =>
+    categories.expenseIds({ keep: current }).map((c) => ({
+      value: c,
+      label: categories.label(c),
+      textValue: categories.label(c),
+      icon: <CategoryIcon category={c} />,
+    }));
 
   // Filter Transactions
   const filtered = transactions.filter((row) => {
@@ -133,7 +151,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
     const matchesSearch =
       search.trim() === "" ||
       row.name.toLowerCase().includes(search.toLowerCase()) ||
-      t(`category.${row.category}`).toLowerCase().includes(search.toLowerCase());
+      categories.label(row.category).toLowerCase().includes(search.toLowerCase());
 
     const matchesCategory = categoryFilter === "ALL" || row.category === categoryFilter;
 
@@ -142,8 +160,31 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
       (statusFilter === "CLEARED" && row.cleared) ||
       (statusFilter === "PENDING" && !row.cleared);
 
-    return matchesSearch && matchesCategory && matchesStatus;
+    const matchesAccount =
+      accountFilter === "ALL" ||
+      (row.accountId ?? DEFAULT_ACCOUNT_ID) === accountFilter ||
+      row.counterAccountId === accountFilter;
+
+    return matchesSearch && matchesCategory && matchesStatus && matchesAccount;
   });
+
+  // Transfers are shown as single neutral rows; they are neither income nor spending
+  const filteredTransfers = categoryFilter !== "ALL" || statusFilter !== "ALL" ? [] : transfers.filter((tr) => {
+    if (isMonthScoped && !tr.date.startsWith(activeMonth)) return false;
+    if (accountFilter !== "ALL" && tr.fromAccountId !== accountFilter && tr.toAccountId !== accountFilter) return false;
+    if (!search.trim()) return true;
+    const haystack = `${tr.notes ?? ""} ${accountName(tr.fromAccountId)} ${accountName(tr.toAccountId)} ${t("ledger.transfer")}`.toLowerCase();
+    return haystack.includes(search.toLowerCase());
+  });
+
+  // Balance after each entry, shown when the ledger is narrowed to one account
+  const balanceAfter = useMemo(
+    () => (filteredAccount ? runningBalances(filteredAccount, transactions, transfers) : {}),
+    [filteredAccount, transactions, transfers]
+  );
+
+  const signedTransferAmount = (tr: Transfer) =>
+    accountFilter === tr.fromAccountId ? -tr.amount : accountFilter === tr.toAccountId ? tr.amount : tr.amount;
 
   // Sort Transactions
   const sorted = [...filtered].sort((a, b) => {
@@ -160,6 +201,30 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
     return sortOrder === "asc" ? result : -result;
   });
 
+  // Same-day entries follow the order they were logged (lists are stored newest first),
+  // matching how the running balance is accumulated
+  const txIndex = new Map(transactions.map((tx, index) => [tx.id, index]));
+  const transferIndex = new Map(transfers.map((tr, index) => [tr.id, index]));
+  const logOrder = (item: LedgerItem) =>
+    item.kind === "tx" ? -(txIndex.get(item.tx.id) ?? 0) : -(transferIndex.get(item.transfer.id) ?? 0) - 0.5;
+
+  const items: LedgerItem[] = [
+    ...sorted.map((tx) => ({ kind: "tx" as const, tx })),
+    ...filteredTransfers.map((transfer) => ({ kind: "transfer" as const, transfer })),
+  ].sort((a, b) => {
+    const value = (item: LedgerItem) => item.kind === "tx"
+      ? { date: item.tx.date, amount: item.tx.amount, name: item.tx.name, category: item.tx.category }
+      : { date: item.transfer.date, amount: signedTransferAmount(item.transfer), name: item.transfer.notes ?? t("ledger.transfer"), category: "~" };
+    const x = value(a);
+    const y = value(b);
+    let result = 0;
+    if (sortField === "date") result = x.date.localeCompare(y.date) || logOrder(a) - logOrder(b);
+    else if (sortField === "amount") result = x.amount - y.amount;
+    else if (sortField === "name") result = x.name.localeCompare(y.name);
+    else result = x.category.localeCompare(y.category);
+    return sortOrder === "asc" ? result : -result;
+  });
+
   // Summary Metrics for current view
   const viewIncome = filtered
     .filter((r) => r.amount > 0)
@@ -172,7 +237,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
   const viewNet = viewIncome - viewExpense;
 
   const activeFilterCount =
-    (categoryFilter !== "ALL" ? 1 : 0) + (statusFilter !== "ALL" ? 1 : 0) + (search ? 1 : 0);
+    (categoryFilter !== "ALL" ? 1 : 0) + (statusFilter !== "ALL" ? 1 : 0) + (accountFilter !== "ALL" ? 1 : 0) + (search ? 1 : 0);
 
   return (
     <BentoCard
@@ -270,6 +335,22 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
           />
         </div>
 
+        {/* Account Filter */}
+        {showAccounts && (
+          <div className="flex items-center gap-1">
+            <CustomSelect
+              value={accountFilter}
+              onChange={setAccountFilter}
+              options={[
+                { value: "ALL", label: t("ledger.allAccounts") },
+                ...accounts.map((a) => ({ value: a.id, label: a.name, textValue: a.name, badge: a.archived ? t("accounts.archived") : undefined })),
+              ]}
+              ariaLabel={t("accounts.fieldLabel")}
+              size="sm"
+            />
+          </div>
+        )}
+
         {/* Status Filter */}
         <div className="flex items-center gap-1">
           <CustomSelect
@@ -286,19 +367,19 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
       <div className="flex flex-wrap items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-base)] px-6 py-2 text-xs font-mono">
         <div className="flex items-center gap-4">
           <span className="text-[var(--color-ink-soft)]">
-            In: <span className="font-bold text-[var(--jade-ink)]">+฿{thb.format(viewIncome)}</span>
+            {t("ledger.in")}: <span className="font-bold text-[var(--jade-ink)]">+฿{thb.format(viewIncome)}</span>
           </span>
           <span className="text-[var(--color-ink-soft)]">
-            Out: <span className="font-bold text-[var(--rose-ink)]">-฿{thb.format(viewExpense)}</span>
+            {t("ledger.out")}: <span className="font-bold text-[var(--rose-ink)]">-฿{thb.format(viewExpense)}</span>
           </span>
           <span className="text-[var(--color-ink-soft)]">
-            Net:{" "}
+            {t("ledger.net")}:{" "}
             <span className={`font-bold ${viewNet >= 0 ? "text-[var(--jade-ink)]" : "text-[var(--rose-ink)]"}`}>
               {viewNet >= 0 ? "+" : ""}฿{thb.format(viewNet)}
             </span>
           </span>
         </div>
-        {(search || categoryFilter !== "ALL" || statusFilter !== "ALL") && (
+        {(search || categoryFilter !== "ALL" || statusFilter !== "ALL" || accountFilter !== "ALL") && (
           <button
             type="button"
             onClick={clearFilters}
@@ -333,6 +414,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
                   {sortField === "category" && (sortOrder === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
                 </div>
               </th>
+              {showAccounts && <th className="px-4 py-3">{t("accounts.fieldLabel")}</th>}
               <th
                 onClick={() => toggleSort("date")}
                 className="cursor-pointer px-4 py-3 hover:text-[var(--color-ink)]"
@@ -351,15 +433,71 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
                   {sortField === "amount" && (sortOrder === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
                 </div>
               </th>
+              {filteredAccount && <th className="px-4 py-3 text-right">{t("ledger.balanceAfter")}</th>}
               <th className="px-4 py-3 text-center">{t("expense.status")}</th>
               <th className="px-6 py-3 text-right">{t("expense.actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-line)]">
             <AnimatePresence initial={false}>
-              {sorted.map((row) => {
+              {items.map((item) => {
+                if (item.kind === "transfer") {
+                  const tr = item.transfer;
+                  const signed = signedTransferAmount(tr);
+                  return (
+                    <motion.tr
+                      key={`tr-${tr.id}`}
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="bg-[var(--color-surface-subtle)]/50 transition-colors hover:bg-[var(--color-surface-subtle)]"
+                    >
+                      <td className="px-6 py-3">
+                        <div className="font-medium text-[var(--color-ink)]">{tr.notes || t("ledger.transfer")}</div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--color-ink-soft)]">
+                          <ArrowsLeftRight size={13} aria-hidden />
+                          {t("ledger.transfer")}
+                        </span>
+                      </td>
+                      {showAccounts && (
+                        <td className="px-4 py-3 whitespace-nowrap text-xs font-semibold text-[var(--color-ink)]">
+                          <span className="inline-flex items-center gap-1">
+                            {accountName(tr.fromAccountId)}
+                            <ArrowRight size={12} className="text-[var(--color-ink-soft)]" aria-label={t("accounts.to")} />
+                            {accountName(tr.toAccountId)}
+                          </span>
+                        </td>
+                      )}
+                      <td className="px-4 py-3 whitespace-nowrap text-xs text-[var(--color-ink-soft)]">{formatShortDate(tr.date, i18n.language === "th")}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap font-mono text-sm font-bold text-[var(--color-ink-soft)]">
+                        {filteredAccount ? (signed >= 0 ? "+" : "-") : ""}฿{thb.format(Math.abs(signed))}
+                      </td>
+                      {filteredAccount && (
+                        <td className="px-4 py-3 text-right whitespace-nowrap font-mono text-xs text-[var(--color-ink)]">
+                          ฿{thb.format(balanceAfter[`tr:${tr.id}`] ?? 0)}
+                        </td>
+                      )}
+                      <td className="px-4 py-3 text-center text-xs text-[var(--color-ink-faint)]">—</td>
+                      <td className="px-6 py-3 text-right whitespace-nowrap">
+                        {onDeleteTransfer && (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteTransfer(tr.id)}
+                            className="rounded-lg p-1.5 text-[var(--color-ink-soft)] transition hover:bg-[var(--rose-soft)] hover:text-[var(--rose-ink)]"
+                            aria-label={t("accounts.deleteTransfer")}
+                          >
+                            <Trash size={15} />
+                          </button>
+                        )}
+                      </td>
+                    </motion.tr>
+                  );
+                }
+                const row = item.tx;
                 const isPositive = row.amount >= 0;
-                const catColor = CATEGORY_COLORS[row.category] || "var(--color-line)";
 
                 return (
                   <motion.tr
@@ -395,7 +533,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
                       {isPositive ? (
                         <span className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--jade)]/30 bg-[var(--jade-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--jade-ink)]">
                           <span className="h-1.5 w-1.5 rounded-full bg-[var(--jade)]" />
-                          {t(`category.${row.category}`)}
+                          {categories.label(row.category)}
                         </span>
                       ) : (
                         <CustomSelect
@@ -403,12 +541,27 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
                           onChange={(val) =>
                             updateRow(row.id, { category: val as TransactionCategory })
                           }
-                          options={expenseCategoryOptions}
+                          options={expenseCategoryOptions(row.category)}
                           ariaLabel={t("expense.category")}
                           size="sm"
                         />
                       )}
                     </td>
+
+                    {/* Account */}
+                    {showAccounts && (
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <CustomSelect
+                          value={row.accountId ?? DEFAULT_ACCOUNT_ID}
+                          onChange={(val) => updateRow(row.id, { accountId: val })}
+                          options={accounts
+                            .filter((a) => !a.archived || a.id === (row.accountId ?? DEFAULT_ACCOUNT_ID))
+                            .map((a) => ({ value: a.id, label: a.name, textValue: a.name }))}
+                          ariaLabel={t("accounts.fieldLabel")}
+                          size="sm"
+                        />
+                      </td>
+                    )}
 
                     {/* Date */}
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -445,6 +598,12 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
                         />
                       </div>
                     </td>
+
+                    {filteredAccount && (
+                      <td className="px-4 py-3 text-right whitespace-nowrap font-mono text-xs text-[var(--color-ink)]">
+                        ฿{thb.format(balanceAfter[`tx:${row.id}`] ?? 0)}
+                      </td>
+                    )}
 
                     {/* Cleared Toggle */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
@@ -486,7 +645,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
           </tbody>
         </table>
 
-        {sorted.length === 0 && (
+        {items.length === 0 && (
           <div className="py-12 text-center">
             <h3 className="text-sm font-bold text-[var(--color-ink)]">
               {t(activeFilterCount ? "expense.noResultsTitle" : "ux.emptyMonth")}
