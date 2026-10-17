@@ -61,6 +61,31 @@ export type Transaction = {
   category: TransactionCategory;
   cleared: boolean;
   notes?: string;
+  accountId?: string; // Missing on legacy rows; resolved to the default account
+};
+
+export const ACCOUNT_TYPES = ["cash", "bank", "ewallet", "credit"] as const;
+
+export type AccountType = (typeof ACCOUNT_TYPES)[number];
+
+export type Account = {
+  id: string;
+  name: string;
+  type: AccountType;
+  openingBalance: number; // Negative for credit card debt carried in
+  alias?: string; // Short handle for quick input, e.g. "kb"
+  archived: boolean;
+  createdAt: string;
+};
+
+// Moves money between two accounts; never counted as income or expense.
+export type Transfer = {
+  id: string;
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number; // Always positive
+  date: string;
+  notes?: string;
 };
 
 export type PresetItem = {

@@ -146,6 +146,11 @@
 - **Compact Thai Labels**: Thai navigation and rank names use concise localized labels instead of mixing Thai and English in the same button.
 - **Responsive Actions**: Tool actions show their icons on narrower screens and full labels on wide desktop screens; icon buttons retain localized accessible names.
 
+#### 17. 🏦 Accounts & Transfers
+- **Multiple Accounts**: Track cash, bank accounts, e-wallets and credit cards, each with an opening balance; balances are derived from entries and transfers.
+- **Transfers**: Move money between your own accounts without counting it as income or spending. Net worth stays unchanged.
+- **Safe Migration**: Existing entries move into a default "Main account", and backups from before accounts still restore.
+
 ---
 
 ## 🇹🇭 ภาษาไทย
@@ -171,6 +176,7 @@
 | 🎯 **วางแผนงบประมาณ 50/30/20 (Budget)** | จัดสรรสัดส่วน Needs / Wants / Savings เทียบยอดใช้จริงกับเป้าหมายแบบเรียลไทม์ |
 | 🐖 **เป้าหมายเงินออม & Sinking Funds (ใหม่)** | ระบบกระปุกออมเงินจัดสรรเป้าหมาย (ฉุกเฉิน, ท่องเที่ยว, ซื้อของ, ลงทุน) + คำนวณ Smart Pace ต่อเดือน + คำนวณเงินสำรองฉุกเฉิน 3-6 เดือนอัตโนมัติ + โบนัส Milestone XP (25, 50, 75, 100%) พร้อมซิงก์ลงสมุดบัญชีจริง |
 | 🧾 **วางแผนบิลประจำ** | เพิ่มบิลรายเดือน/รายปี ดูกำหนดชำระในเดือนที่เลือก และยืนยันยอดจ่ายจริงเพื่อบันทึกลงสมุดบัญชี พร้อมกันยอดบิลที่ยังไม่ชำระออกจาก Safe-to-Spend |
+| 🏦 **บัญชีและการโอน** | แยกเงินสด บัญชีธนาคาร e-Wallet และบัตรเครดิต พร้อมยอดตั้งต้นและยอดคงเหลือ โอนระหว่างบัญชีโดยไม่นับเป็นรายรับหรือรายจ่าย และย้ายรายการเดิมเข้า "บัญชีหลัก" อัตโนมัติ |
 | 🧮 **คำนวณภาษีเงินได้บุคคลธรรมดา (Tax Planner)** | คำนวณอัตราภาษีขั้นบันได 0%-35% พร้อมรองรับค่าลดหย่อนภาษีไทยครบวงจร (ประกันสังคม, กองทุน PVD, RMF, SSF, ThaiESG, Easy E-Receipt, ประกันชีวิต/สุขภาพ, ดอกเบี้ยบ้าน) |
 | 📊 **ศูนย์วิเคราะห์ข้อมูล (Analytics Hub)** | กราฟวงกลม Donut Chart และกราฟแท่งเปรียบเทียบสัดส่วนรายจ่ายแยกหมวดหมู่ |
 | ⚔️ **ระบบเควสต์ & เลเวล (Quests & Growth)** | ภารกิจรายวันเก็บ XP เลื่อนระดับจาก Novice สู่ Grandmaster พร้อมเหรียญความสำเร็จ |

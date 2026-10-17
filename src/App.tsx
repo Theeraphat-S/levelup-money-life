@@ -12,6 +12,7 @@ import { UndoToast } from "./components/UndoToast";
 import { QuickAddModal } from "./components/QuickAddModal";
 import { SlipScanModal } from "./components/SlipScanModal";
 import { DataManagerModal } from "./components/DataManagerModal";
+import { AccountManagerModal } from "./components/AccountManagerModal";
 import { LevelUpCelebration } from "./components/LevelUpCelebration";
 
 // Views
@@ -33,6 +34,7 @@ import { useQuests } from "./hooks/useQuests";
 import { useTaxProfile } from "./hooks/useTaxProfile";
 import { useBankSlipListener } from "./hooks/useBankSlipListener";
 import { useSavingsGoals } from "./hooks/useSavingsGoals";
+import { useAccounts } from "./hooks/useAccounts";
 
 // Services, Constants & Types
 import {
@@ -57,8 +59,17 @@ import {
   getInitialDates,
 } from "./constants/sampleData";
 import type { BackupData } from "./services/exportImport";
-import type { RecurringBill, RecurringBillPayment, Transaction, ViewTab } from "./types";
+import type { Account, RecurringBill, RecurringBillPayment, Transaction, Transfer, ViewTab } from "./types";
 import { recordBillPayment } from "./utils/recurringBills";
+import {
+  DEFAULT_ACCOUNT_ID,
+  assignMissingAccounts,
+  createDefaultAccount,
+  ensureAccounts,
+  resolveDefaultAccountId,
+  restoreAccountSnapshot,
+  sanitizeTransfers,
+} from "./utils/accounts";
 
 const { today, currentMonthISO } = getInitialDates();
 
@@ -75,6 +86,7 @@ export default function App() {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
   const [quickAddType, setQuickAddType] = useState<"expense" | "income">("expense");
   const [isDataManagerOpen, setIsDataManagerOpen] = useState<boolean>(false);
+  const [isAccountsOpen, setIsAccountsOpen] = useState<boolean>(false);
   const [recurringBills, setRecurringBills] = useState<RecurringBill[]>([]);
 
   // Domain Hooks
@@ -105,6 +117,7 @@ export default function App() {
   const {
     transactions,
     saveStatus,
+    setDefaultAccountId: setTransactionsDefaultAccount,
     retrySave,
     setTransactions,
     setTransactionsState,
@@ -121,6 +134,25 @@ export default function App() {
     importTransactions,
     initTransactions,
   } = useTransactions();
+
+  const {
+    accounts,
+    transfers,
+    defaultAccountId,
+    initAccounts,
+    saveAccount,
+    setAccountArchived,
+    deleteAccount,
+    setDefaultAccountId,
+    addTransfer,
+    deleteTransfer,
+    replaceAll: replaceAllAccounts,
+  } = useAccounts();
+
+  // New entries without an explicit account follow the user's default account
+  useEffect(() => {
+    setTransactionsDefaultAccount(defaultAccountId);
+  }, [defaultAccountId, setTransactionsDefaultAccount]);
 
   const {
     allocations,
@@ -225,6 +257,20 @@ export default function App() {
         const savedPresets = await getStoredPresets();
         const savedRecurringBills = await getSetting<RecurringBill[]>("recurringBills", []);
         const setupComplete = await getSetting<boolean>("setupComplete", false);
+
+        // Accounts migration: seed a default account and move legacy rows into it
+        const storedAccounts = await getSetting<Account[]>("accounts", []);
+        const loadedAccounts = ensureAccounts(storedAccounts, t("accounts.defaultName"));
+        if (JSON.stringify(loadedAccounts) !== JSON.stringify(storedAccounts)) await saveSetting("accounts", loadedAccounts);
+        const loadedTransfers = sanitizeTransfers(await getSetting<Transfer[]>("transfers", []));
+        const savedDefaultAccount = await getSetting<string>("defaultAccountId", DEFAULT_ACCOUNT_ID);
+        const fallbackAccount = resolveDefaultAccountId(loadedAccounts, savedDefaultAccount);
+        const migratedTxs = assignMissingAccounts(txs, loadedAccounts, fallbackAccount);
+        if (migratedTxs !== txs) {
+          txs = migratedTxs;
+          await saveAllTransactions(txs).catch((err) => console.error("Account migration failed:", err));
+        }
+        initAccounts(loadedAccounts, loadedTransfers, savedDefaultAccount);
         setShowSetup(!setupComplete && txs.length === 0);
 
         initTransactions(txs, savedPresets);
@@ -240,7 +286,7 @@ export default function App() {
       }
     }
     loadData();
-  }, [initTransactions, initAllocations, initQuests, initTaxProfile, initGamification]);
+  }, [initTransactions, initAllocations, initQuests, initTaxProfile, initGamification, initAccounts, t]);
 
   // Handle Quick Command Bar / Preset Transaction Logging
   const handleLogQuickTransaction = (newTx: Transaction) => {
@@ -363,7 +409,10 @@ export default function App() {
 
   // Restore Complete Backup
   const handleRestoreBackup = (backup: BackupData) => {
-    if (backup.transactions) setTransactions(backup.transactions);
+    const restored = restoreAccountSnapshot(backup, { accounts, transfers, defaultAccountId }, t("accounts.defaultName"));
+    replaceAllAccounts(restored.accounts, restored.transfers);
+    setDefaultAccountId(restored.defaultAccountId);
+    setTransactions(restored.transactions);
     if (backup.allocations) setAllocations(backup.allocations);
     if (backup.quests) setQuests(backup.quests);
     if (typeof backup.income === "number") setIncome(backup.income);
@@ -388,6 +437,7 @@ export default function App() {
     await saveSetting("streakDays", 1);
     await saveSetting("unlockedAchievements", ["first_log"]);
     await saveStoredPresets(DEFAULT_PRESETS);
+    replaceAllAccounts([createDefaultAccount(t("accounts.defaultName"))], []);
 
     setTransactionsState(SAMPLE_TRANSACTIONS);
     setAllocationsState(SAMPLE_ALLOCATIONS);
@@ -432,6 +482,7 @@ export default function App() {
           onOpenQuickAdd={() => { setQuickAddType("expense"); setIsQuickAddOpen(true); }}
           onOpenScanSlip={() => openSlipScan([])}
           onOpenDataManager={() => setIsDataManagerOpen(true)}
+          onOpenAccounts={() => setIsAccountsOpen(true)}
           themeMode={themeMode}
           setThemeMode={setThemeMode}
         />
@@ -579,6 +630,8 @@ export default function App() {
           onOpenScanSlip={() => openSlipScan([])}
           defaultDate={today}
           defaultType={quickAddType}
+          accounts={accounts}
+          defaultAccountId={defaultAccountId}
         />
 
         <SlipScanModal
@@ -604,9 +657,27 @@ export default function App() {
           presets={presets}
           savingsGoals={savingsGoals}
           recurringBills={recurringBills}
+          accounts={accounts}
+          transfers={transfers}
+          defaultAccountId={defaultAccountId}
           onRestoreBackup={handleRestoreBackup}
-          onImportTransactions={(txs) => { void importTransactions(txs, { onAwardXp: addXp }).catch(() => {}); }}
+          onImportTransactions={(txs) => { void importTransactions(assignMissingAccounts(txs, accounts, defaultAccountId), { onAwardXp: addXp }).catch(() => {}); }}
           onResetData={handleResetData}
+        />
+
+        <AccountManagerModal
+          isOpen={isAccountsOpen}
+          onClose={() => setIsAccountsOpen(false)}
+          accounts={accounts}
+          transfers={transfers}
+          transactions={transactions}
+          defaultAccountId={defaultAccountId}
+          onSaveAccount={saveAccount}
+          onSetArchived={setAccountArchived}
+          onDeleteAccount={deleteAccount}
+          onSetDefault={setDefaultAccountId}
+          onAddTransfer={(transfer) => { addTransfer(transfer); showToast(t("accounts.transferSaved")); }}
+          onDeleteTransfer={deleteTransfer}
         />
 
         <LevelUpCelebration

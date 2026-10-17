@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { saveAllTransactions } from "../services/db";
 import { DEFAULT_PRESETS, saveStoredPresets } from "../utils/presetManager";
 import type { PresetItem, Transaction } from "../types";
+import { DEFAULT_ACCOUNT_ID } from "../utils/accounts";
 
 export function useTransactions() {
   const [transactions, setTransactionsState] = useState<Transaction[]>([]);
@@ -10,8 +11,13 @@ export function useTransactions() {
   const transactionsRef = useRef<Transaction[]>([]);
   const writeQueue = useRef<Promise<void>>(Promise.resolve());
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  const defaultAccountRef = useRef<string>(DEFAULT_ACCOUNT_ID);
 
-  const persistTransactions = useCallback((next: Transaction[]) => {
+  const persistTransactions = useCallback((input: Transaction[]) => {
+    // Entries created without an explicit account land in the current default account
+    const next = input.some((tx) => !tx.accountId)
+      ? input.map((tx) => (tx.accountId ? tx : { ...tx, accountId: defaultAccountRef.current }))
+      : input;
     transactionsRef.current = next;
     setTransactionsState(next);
     setSaveStatus("saving");
@@ -163,9 +169,14 @@ export function useTransactions() {
     []
   );
 
+  const setDefaultAccountId = useCallback((id: string) => {
+    defaultAccountRef.current = id;
+  }, []);
+
   return {
     transactions,
     saveStatus,
+    setDefaultAccountId,
     retrySave: () => persistTransactions(transactionsRef.current),
     setTransactions,
     setTransactionsState: (txs: Transaction[]) => { transactionsRef.current = txs; setTransactionsState(txs); },

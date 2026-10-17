@@ -5,6 +5,7 @@ import {
   CaretLeft,
   CaretRight,
   Database,
+  Wallet,
   Desktop,
   Flame,
   Moon,
@@ -27,6 +28,7 @@ interface HeaderCommandDeckProps {
   onOpenQuickAdd: () => void;
   onOpenScanSlip: () => void;
   onOpenDataManager: () => void;
+  onOpenAccounts: () => void;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
 }
@@ -40,6 +42,7 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
   onOpenQuickAdd,
   onOpenScanSlip,
   onOpenDataManager,
+  onOpenAccounts,
   themeMode,
   setThemeMode,
 }) => {
@@ -239,6 +242,18 @@ export const HeaderCommandDeck: React.FC<HeaderCommandDeckProps> = ({
               </button>
             ))}
           </div>
+
+          {/* Accounts Trigger */}
+          <TactileButton
+            type="button"
+            onClick={onOpenAccounts}
+            title={t("accounts.title")}
+            aria-label={t("accounts.title")}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-subtle)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface)] shadow-xs"
+          >
+            <Wallet size={15} weight="duotone" />
+            <span className="hidden 2xl:inline whitespace-nowrap">{t("accounts.open")}</span>
+          </TactileButton>
 
           {/* Data Manager Trigger */}
           <TactileButton

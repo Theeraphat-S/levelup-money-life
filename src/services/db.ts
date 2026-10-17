@@ -40,6 +40,13 @@ async function initTables(db: Database) {
     // Column already exists
   }
 
+  // Accounts migration: legacy rows keep NULL and resolve to the default account on load
+  try {
+    await db.execute(`ALTER TABLE transactions ADD COLUMN account_id TEXT`);
+  } catch {
+    // Column already exists
+  }
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS allocations (
       id TEXT PRIMARY KEY,
@@ -102,13 +109,15 @@ export async function getTransactions(): Promise<Transaction[]> {
       category: string;
       cleared: number;
       notes?: string;
+      account_id?: string | null;
     }>>("SELECT * FROM transactions ORDER BY date DESC");
 
-    return rows.map((r) => ({
+    return rows.map(({ account_id, ...r }) => ({
       ...r,
       category: r.category as Transaction["category"],
       cleared: Boolean(r.cleared),
       notes: r.notes || "",
+      ...(account_id ? { accountId: account_id } : {}),
     }));
   } catch (err) {
     console.error("Failed to get transactions from db:", err);
@@ -122,16 +131,17 @@ export async function saveTransaction(tx: Transaction): Promise<void> {
     const db = await getDb();
     if (db) {
       await db.execute(
-        `INSERT INTO transactions (id, name, amount, date, category, cleared, notes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO transactions (id, name, amount, date, category, cleared, notes, account_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT(id) DO UPDATE SET
            name=excluded.name,
            amount=excluded.amount,
            date=excluded.date,
            category=excluded.category,
            cleared=excluded.cleared,
-           notes=excluded.notes`,
-        [tx.id, tx.name, tx.amount, tx.date, tx.category, tx.cleared ? 1 : 0, tx.notes || ""]
+           notes=excluded.notes,
+           account_id=excluded.account_id`,
+        [tx.id, tx.name, tx.amount, tx.date, tx.category, tx.cleared ? 1 : 0, tx.notes || "", tx.accountId ?? null]
       );
     }
   } catch (err) {
@@ -160,11 +170,11 @@ export async function saveAllTransactions(txs: Transaction[]): Promise<void> {
   const payload = JSON.stringify(txs);
   // Insert the complete snapshot before removing old rows. Each SQL statement
   // is atomic; failure leaves existing rows intact and can safely be retried.
-  await db.execute(`INSERT OR REPLACE INTO transactions (id, name, amount, date, category, cleared, notes)
+  await db.execute(`INSERT OR REPLACE INTO transactions (id, name, amount, date, category, cleared, notes, account_id)
     SELECT json_extract(value, '$.id'), json_extract(value, '$.name'),
       json_extract(value, '$.amount'), json_extract(value, '$.date'),
       json_extract(value, '$.category'), json_extract(value, '$.cleared'),
-      COALESCE(json_extract(value, '$.notes'), '') FROM json_each($1)`, [payload]);
+      COALESCE(json_extract(value, '$.notes'), ''), json_extract(value, '$.accountId') FROM json_each($1)`, [payload]);
   await db.execute("DELETE FROM transactions WHERE id NOT IN (SELECT json_extract(value, '$.id') FROM json_each($1))", [payload]);
 }
 

@@ -14,10 +14,12 @@ import { useTranslation } from "react-i18next";
 import {
   EXPENSE_CATEGORIES,
   CATEGORY_COLORS,
+  type Account,
   type Transaction,
   type TransactionCategory,
 } from "../types";
 import { CustomDatePicker } from "./common/CustomDatePicker";
+import { CustomSelect } from "./common/CustomSelect";
 
 interface QuickAddModalProps {
   isOpen: boolean;
@@ -26,6 +28,8 @@ interface QuickAddModalProps {
   onOpenScanSlip?: () => void;
   defaultDate?: string;
   defaultType?: "expense" | "income";
+  accounts?: Account[];
+  defaultAccountId?: string;
 }
 
 export const QuickAddModal: React.FC<QuickAddModalProps> = ({
@@ -35,6 +39,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   onOpenScanSlip,
   defaultDate,
   defaultType = "expense",
+  accounts = [],
+  defaultAccountId,
 }) => {
   const { t } = useTranslation();
   const today = getLocalTodayISO();
@@ -52,7 +58,9 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [category, setCategory] = useState<TransactionCategory>("Food");
   const [cleared, setCleared] = useState(true);
   const [notes, setNotes] = useState("");
+  const [accountId, setAccountId] = useState(defaultAccountId ?? "");
   const [error, setError] = useState("");
+  const activeAccounts = accounts.filter((a) => !a.archived);
 
   useEffect(() => {
     if (isOpen) {
@@ -63,11 +71,12 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       setCategory(defaultType === "income" ? "Income" : "Food");
       setCleared(true);
       setNotes("");
+      setAccountId(defaultAccountId ?? "");
       setError("");
       pendingTx.current = null;
       setConfirmDiscard(false);
     }
-  }, [isOpen, defaultDate, defaultType, today]);
+  }, [isOpen, defaultDate, defaultType, today, defaultAccountId]);
 
   const requestClose = () => {
     if (saving) return;
@@ -111,6 +120,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       category: finalCategory,
       cleared,
       notes: notes.trim(),
+      ...(accountId ? { accountId } : {}),
     };
 
     pendingTx.current = newTx;
@@ -315,6 +325,22 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                   className="w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--primary)] shadow-xs"
                 />
               </div>
+
+              {/* Account (only when there is a choice to make) */}
+              {activeAccounts.length > 1 && (
+                <div>
+                  <span className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1">
+                    {t("accounts.fieldLabel")}
+                  </span>
+                  <CustomSelect
+                    value={accountId}
+                    onChange={setAccountId}
+                    ariaLabel={t("accounts.fieldLabel")}
+                    className="w-full"
+                    options={activeAccounts.map((a) => ({ value: a.id, label: a.name, textValue: a.name, badge: t(`accounts.types.${a.type}`) }))}
+                  />
+                </div>
+              )}
 
               {/* Category (If Expense) */}
               {type === "expense" && (
