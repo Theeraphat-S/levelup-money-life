@@ -28,9 +28,10 @@
 | Desktop | Tauri v2 |
 | Styling | Tailwind CSS **v4** (`@tailwindcss/postcss`) |
 | Animation | Motion v12 (`motion/react`) |
-| Icons | `@phosphor-icons/react` v2 |
-| Font (sans) | `Outfit Variable` (`@fontsource-variable/outfit`) |
-| Font (mono) | `JetBrains Mono Variable` (`@fontsource-variable/jetbrains-mono`) |
+| Icons (static) | `iconsax-react` via `src/components/icons` (never import it directly in components) |
+| Icons (animated) | Lordicon Wired Outline (free set) via `LordIcon` + `lottie-web` light player |
+| Font (Latin, numerals) | `Outfit Variable` (`@fontsource-variable/outfit`) |
+| Font (Thai) | `Anuphan Variable` (`@fontsource-variable/anuphan`) |
 | i18n | `react-i18next` (TH / EN) |
 | Charts | `recharts` |
 | OCR | `tesseract.js` |
@@ -102,12 +103,14 @@ className="bg-[#FEFFFC] text-[#142D2B]"
 ### 4.1 Font Stack
 
 ```
---font-sans: "Outfit Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
---font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
+--font-sans: "Outfit Variable", "Anuphan Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+--font-mono: var(--font-sans); /* numerals use sans + tabular-nums via .font-mono */
 ```
 
-- **Outfit** — ใช้ทุก UI text, label, body copy
-- **JetBrains Mono** — ใช้กับ **ตัวเลขทางการเงินเท่านั้น** (amount, XP, percentage)
+- **Outfit** — อังกฤษและตัวเลขทั้งแอป (Outfit ไม่มีตัวอักษรไทย)
+- **Anuphan** — ตัวอักษรไทย ถูกเลือกอัตโนมัติผ่าน font stack
+- `font-mono` = ฟอนต์ sans + `tabular-nums` ใช้กับ **ตัวเลขทางการเงิน** (amount, XP, percentage) เพื่อให้หลักเรียงตรงกัน
+- `html[lang="th"]` ถูกตั้งโดย `i18n.ts` และเพิ่ม line-height เป็น 1.6 เพราะสระ/วรรณยุกต์ไทยต้องการพื้นที่แนวตั้ง
 
 ### 4.2 Type Scale
 
@@ -121,7 +124,7 @@ className="bg-[#FEFFFC] text-[#142D2B]"
 | Tab label | `text-xs font-semibold` | Nav tab |
 
 > **Rule:** ห้ามใช้ Inter font — ใช้ Outfit เท่านั้น
-> **Rule:** ตัวเลขการเงิน (บาท, XP, %) ต้องใช้ `font-mono` (JetBrains Mono) เสมอ
+> **Rule:** ตัวเลขการเงิน (บาท, XP, %) ต้องใช้ `font-mono` (tabular-nums) เสมอ
 
 ---
 
@@ -390,18 +393,30 @@ const container = { animate: { transition: { delayChildren: stagger(0.04) } } };
 
 ---
 
-## 8. Icon Usage (Phosphor)
+## 8. Icon Usage (Iconsax + Lordicon)
 
-Import: `@phosphor-icons/react`
+Import จาก `src/components/icons` เท่านั้น ห้าม import `iconsax-react` ตรงๆ
+
+- `index.tsx` — wrapper ที่แปลง prop `weight` เป็น Iconsax variant และคงชื่อ export เดิม (`Plus`, `Trash`, `CheckCircle` …)
+- `glyphs.tsx` — ไอคอนที่ Iconsax ไม่มี (Check, X, Circle, Fire, TShirt) วาดตาม grid และเส้น 1.5px เดียวกัน
+- `registry.tsx` — ไอคอนที่ **เก็บเป็นข้อมูล** (preset, หมวดหมู่, เป้าหมายออม) เก็บเป็น key เช่น `coffee`, `meal`, `transit` ไม่ผูกกับไลบรารี ค่าเก่า (emoji / ชื่อ Phosphor) ถูกแปลงด้วย `resolveIconKey` ตอนโหลด ถ้าจะเพิ่มไอคอนให้เพิ่มใน `ICONS` และ `PICKER_ICON_KEYS`
+- ใช้ `<AppIcon name={...} />` เมื่อแสดงค่าที่มาจากข้อมูล และ `<PresetIcon />` สำหรับ preset (สีตามหมวดหมู่)
 
 ### 8.1 Weight Convention
 
-| Context | Weight |
-|---|---|
-| CTA / Action button | `weight="bold"` |
-| Navigation, informational | `weight="duotone"` |
-| Badge, status dot | `weight="fill"` |
-| Decorative / large | `weight="regular"` |
+| Context | Weight | Iconsax variant |
+|---|---|---|
+| UI ทั่วไป (nav, ปุ่ม, header) | `regular` / `bold` | Linear |
+| Active, badge, status, เน้น | `fill` | Bold |
+| Preset, หมวดหมู่, ไอคอนตกแต่ง | `duotone` | Bulk |
+
+### 8.1.1 Animated icons (Lordicon)
+
+ใช้ `LordIcon` ได้ไม่เกินจุดสำคัญ: level-up (`confetti`), quest สำเร็จ (`medal`), บันทึกรายการสำเร็จ (`check`), balance ตรงกัน (`scale`), empty state ของรายการ (`coins`) และเป้าหมายออม (`piggy-bank`)
+
+- เล่นครั้งเดียว ไม่วนซ้ำ สีวาดใหม่ตามธีมตอนรันจึงใช้ได้ทั้ง light/dark
+- ต้องส่ง `fallback` เป็นไอคอน Iconsax เสมอ จะแสดงแทนเมื่อผู้ใช้ตั้ง `prefers-reduced-motion`
+- ไฟล์ JSON อยู่ใน `src/assets/lordicon` ไม่โหลดจาก CDN ตอนรัน ไอคอนฟรีต้องมีเครดิต (อยู่ท้ายหน้า Settings)
 
 ### 8.2 Size Convention
 
@@ -432,7 +447,7 @@ Import: `@phosphor-icons/react`
 <span>🔥 7 วัน</span>
 ```
 
-> **ANTI-EMOJI POLICY:** ห้ามใช้ emoji ทุกกรณี ใช้ Phosphor icon เท่านั้น
+> **ANTI-EMOJI POLICY:** ห้ามใช้ emoji ทุกกรณี ใช้ไอคอนจาก `src/components/icons` เท่านั้น
 
 ---
 
@@ -510,7 +525,7 @@ type Achievement = {
   id: string;
   titleKey: string;     // i18n key
   descKey: string;      // i18n key
-  iconName: string;     // Phosphor icon name string
+  iconName: string;     // legacy Phosphor name (not rendered); stored icons elsewhere use registry keys
   xpReward: number;
   unlocked: boolean;
   unlockedAt?: string;
@@ -578,7 +593,7 @@ const { t } = useTranslation()
 - Animate ด้วย `transform` และ `opacity` เท่านั้น
 - ใช้ `active:scale-[0.98]` กับทุก interactive element
 - ใช้ token ผ่าน `var(--token-name)` ไม่ hardcode hex
-- ใช้ Phosphor icon `weight="duotone"` เป็น default
+- ใช้ `weight="duotone"` (Bulk) กับไอคอนตกแต่ง และ Linear กับไอคอน UI
 - ตรวจ `package.json` ก่อน import library ใดก็ตาม
 - Wrap animated list ด้วย `<AnimatePresence>`
 - ให้ financial table ใช้ `divide-y` แทน card-per-row

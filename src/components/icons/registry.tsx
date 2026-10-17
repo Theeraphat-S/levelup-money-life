@@ -146,7 +146,9 @@ export function isIconKey(value: unknown): value is IconKey {
 export function resolveIconKey(value: string | null | undefined): IconKey | null {
   if (!value) return null;
   if (isIconKey(value)) return value;
-  return LEGACY_ALIASES[value] ?? LEGACY_ALIASES[value.replace(/️/g, "")] ?? null;
+  const legacy = (key: string): IconKey | undefined =>
+    Object.prototype.hasOwnProperty.call(LEGACY_ALIASES, key) ? LEGACY_ALIASES[key] : undefined;
+  return legacy(value) ?? legacy(value.replace(/️/g, "")) ?? null;
 }
 
 /** Like `resolveIconKey`, but always returns a key so the value can be saved back. */

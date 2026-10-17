@@ -237,8 +237,8 @@ Testing Engine       Vitest (119 Unit & Integration Tests Passing)
 OCR Engine           Tesseract.js + HTML5 Canvas Preprocessing
 Charts & Visuals     Recharts
 Motion & Animations  Motion v12 — motion/react (Spring Physics & Micro-Interactions)
-Iconography          Phosphor Icons React + Lucide React
-Typography           Outfit (UI Sans) + JetBrains Mono (Financial Numbers)
+Iconography          Iconsax (static) + Lordicon (animated)
+Typography           Outfit (Latin, numerals) + Anuphan (Thai)
 Internationalization react-i18next (TH / EN)
 ```
 
