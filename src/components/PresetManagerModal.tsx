@@ -11,8 +11,6 @@ import {
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import {
-  CATEGORY_COLORS,
-  EXPENSE_CATEGORIES,
   type Account,
   type PresetItem,
   type TransactionCategory,
@@ -24,6 +22,9 @@ import {
   deletePreset,
 } from "../utils/presetManager";
 import { CustomSelect } from "./common/CustomSelect";
+import { CategoryPicker } from "./common/CategoryPicker";
+import { CategoryIcon } from "./common/CategoryIcon";
+import { useCategories } from "../hooks/useCategories";
 
 const EMOJI_OPTIONS = [
   "☕", "🍱", "🚇", "🛒", "⛽", "🥤", "🍿", "🍜",
@@ -47,6 +48,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
   accounts = [],
 }) => {
   const { t } = useTranslation();
+  const { label: categoryLabel } = useCategories();
 
   const [editingPreset, setEditingPreset] = useState<PresetItem | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -220,7 +222,6 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {presets.map((preset) => {
-                    const catColor = CATEGORY_COLORS[preset.category] || "var(--primary)";
                     const isCurrentEditing = editingPreset?.id === preset.id;
                     return (
                       <div
@@ -247,11 +248,8 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
                               <span
                                 className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.2 text-xs font-medium border border-[var(--color-line)] bg-[var(--color-surface)]"
                               >
-                                <span
-                                  className="h-1.5 w-1.5 rounded-full"
-                                  style={{ backgroundColor: catColor }}
-                                />
-                                {t(`category.${preset.category}`)}
+                                <CategoryIcon category={preset.category} size={12} />
+                                {categoryLabel(preset.category)}
                               </span>
                             </div>
                           </div>
@@ -426,30 +424,7 @@ export const PresetManagerModal: React.FC<PresetManagerModalProps> = ({
                       <label className="block text-xs font-semibold text-[var(--color-ink-soft)] mb-1.5">
                         {t("presetModal.categoryLabel")}
                       </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                        {EXPENSE_CATEGORIES.map((cat) => {
-                          const isSelected = category === cat;
-                          const catColor = CATEGORY_COLORS[cat];
-                          return (
-                            <button
-                              key={cat}
-                              type="button"
-                              onClick={() => setCategory(cat)}
-                              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
-                                isSelected
-                                  ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary-ink)] font-semibold shadow-xs"
-                                  : "border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-subtle)]"
-                              }`}
-                            >
-                              <span
-                                className="h-2 w-2 rounded-full shrink-0"
-                                style={{ backgroundColor: catColor }}
-                              />
-                              <span className="truncate">{t(`category.${cat}`)}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <CategoryPicker value={category} onChange={setCategory} />
                     </div>
                   )}
 

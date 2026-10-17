@@ -16,8 +16,8 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
+import { useCategories } from "../hooks/useCategories";
 import {
-  CATEGORY_COLORS,
   type Account,
   type Allocation,
   type AutocompleteItem,
@@ -36,6 +36,7 @@ import {
   incrementPresetUsage,
 } from "../utils/presetManager";
 import { PresetManagerModal } from "./PresetManagerModal";
+import { CategoryIcon } from "./common/CategoryIcon";
 
 const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
@@ -67,6 +68,7 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
   accounts = [],
 }) => {
   const { t } = useTranslation();
+  const categories = useCategories();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -101,9 +103,16 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
     () => activeAccounts.map((a) => a.alias).filter((alias): alias is string => Boolean(alias)),
     [activeAccounts]
   );
+  // Custom categories can be tagged by name, e.g. "อาหารแมว 120 #สัตว์เลี้ยง"
+  const categoryTags = useMemo(
+    () => Object.fromEntries(
+      categories.list.filter((c) => !c.builtIn && !c.hidden && c.name).map((c) => [(c.name as string).toLowerCase(), c.id])
+    ),
+    [categories.list]
+  );
   const parsedTx: ParsedQuickTransaction = useMemo(() => {
-    return parseQuickInput(inputVal, { accountAliases });
-  }, [inputVal, accountAliases]);
+    return parseQuickInput(inputVal, { accountAliases, categoryTags });
+  }, [inputVal, accountAliases, categoryTags]);
   const parsedAccount = parsedTx.accountAlias
     ? activeAccounts.find((a) => a.alias === parsedTx.accountAlias)
     : undefined;
@@ -513,11 +522,8 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
             <span
               className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-0.5 font-medium border border-[var(--color-line)] bg-[var(--color-surface)] text-xs"
             >
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ backgroundColor: CATEGORY_COLORS[parsedTx.category] }}
-              />
-              {t(`category.${parsedTx.category}`)}
+              <CategoryIcon category={parsedTx.category} size={12} />
+              {categories.label(parsedTx.category)}
             </span>
             {parsedAccount && (
               <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--primary)]/30 bg-[var(--primary-soft)] px-2.5 py-0.5 font-semibold text-[var(--primary-ink)]">
@@ -560,7 +566,6 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
                 {autocompleteList.map((item, index) => {
                   const isHighlighted = highlightedIndex === index;
                   const isPositive = item.amount >= 0;
-                  const catColor = CATEGORY_COLORS[item.category] || "var(--primary)";
 
                   return (
                     <div
@@ -580,8 +585,8 @@ export const QuickCommandBar: React.FC<QuickCommandBarProps> = ({
                         <span className="text-base shrink-0">{item.icon || "📝"}</span>
                         <span className="font-semibold truncate">{item.name}</span>
                         <span className="inline-flex items-center gap-1 text-xs text-[var(--color-ink-soft)] font-normal border border-[var(--color-line)] rounded px-1.5 py-0.2 bg-[var(--color-surface)]">
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: catColor }} />
-                          {t(`category.${item.category}`)}
+                          <CategoryIcon category={item.category} size={12} />
+                          {categories.label(item.category)}
                         </span>
                       </div>
 

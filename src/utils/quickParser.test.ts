@@ -441,3 +441,10 @@ describe("account aliases", () => {
     expect(parseQuickInput("ข้าว 50 @kbank")).toMatchObject({ isValid: true, unknownAccountAlias: undefined });
   });
 });
+
+describe("custom category tags", () => {
+  it("tags a custom category by name", () => {
+    const parsed = parseQuickInput("อาหารแมว 120 #สัตว์เลี้ยง", { categoryTags: { "สัตว์เลี้ยง": "cat-pets" } });
+    expect(parsed).toMatchObject({ isValid: true, category: "cat-pets", name: "อาหารแมว", amount: -120 });
+  });
+});

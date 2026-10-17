@@ -16,10 +16,9 @@ import { useTranslation } from "react-i18next";
 import { BentoCard } from "../common/BentoCard";
 import { CustomSelect, type CustomSelectOption } from "../common/CustomSelect";
 import { CustomDatePicker } from "../common/CustomDatePicker";
+import { CategoryIcon } from "../common/CategoryIcon";
+import { useCategories } from "../../hooks/useCategories";
 import {
-  CATEGORY_COLORS,
-  EXPENSE_CATEGORIES,
-  TRANSACTION_CATEGORIES,
   type SortField,
   type SortOrder,
   type Transaction,
@@ -42,6 +41,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
   onOpenQuickAdd,
 }) => {
   const { t } = useTranslation();
+  const categories = useCategories();
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
@@ -98,13 +98,14 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
   const categoryFilterOptions: CustomSelectOption[] = useMemo(
     () => [
       { value: "ALL", label: t("expense.allCategories") },
-      ...TRANSACTION_CATEGORIES.map((c) => ({
-        value: c,
-        label: t(`category.${c}`),
-        colorDot: CATEGORY_COLORS[c],
+      ...categories.list.map((c) => ({
+        value: c.id,
+        label: categories.label(c.id),
+        textValue: categories.label(c.id),
+        icon: <CategoryIcon category={c.id} />,
       })),
     ],
-    [t]
+    [t, categories]
   );
 
   const statusFilterOptions: CustomSelectOption[] = useMemo(
@@ -116,15 +117,14 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
     [t]
   );
 
-  const expenseCategoryOptions: CustomSelectOption[] = useMemo(
-    () =>
-      EXPENSE_CATEGORIES.map((c) => ({
-        value: c,
-        label: t(`category.${c}`),
-        colorDot: CATEGORY_COLORS[c],
-      })),
-    [t]
-  );
+  // A row keeps its current category in the list even after that category is hidden
+  const expenseCategoryOptions = (current: string): CustomSelectOption[] =>
+    categories.expenseIds({ keep: current }).map((c) => ({
+      value: c,
+      label: categories.label(c),
+      textValue: categories.label(c),
+      icon: <CategoryIcon category={c} />,
+    }));
 
   // Filter Transactions
   const filtered = transactions.filter((row) => {
@@ -133,7 +133,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
     const matchesSearch =
       search.trim() === "" ||
       row.name.toLowerCase().includes(search.toLowerCase()) ||
-      t(`category.${row.category}`).toLowerCase().includes(search.toLowerCase());
+      categories.label(row.category).toLowerCase().includes(search.toLowerCase());
 
     const matchesCategory = categoryFilter === "ALL" || row.category === categoryFilter;
 
@@ -359,7 +359,6 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
             <AnimatePresence initial={false}>
               {sorted.map((row) => {
                 const isPositive = row.amount >= 0;
-                const catColor = CATEGORY_COLORS[row.category] || "var(--color-line)";
 
                 return (
                   <motion.tr
@@ -395,7 +394,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
                       {isPositive ? (
                         <span className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--jade)]/30 bg-[var(--jade-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--jade-ink)]">
                           <span className="h-1.5 w-1.5 rounded-full bg-[var(--jade)]" />
-                          {t(`category.${row.category}`)}
+                          {categories.label(row.category)}
                         </span>
                       ) : (
                         <CustomSelect
@@ -403,7 +402,7 @@ export const TransactionLedger: React.FC<TransactionLedgerProps> = ({
                           onChange={(val) =>
                             updateRow(row.id, { category: val as TransactionCategory })
                           }
-                          options={expenseCategoryOptions}
+                          options={expenseCategoryOptions(row.category)}
                           ariaLabel={t("expense.category")}
                           size="sm"
                         />

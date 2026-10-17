@@ -22,10 +22,10 @@ import {
   TrendUp,
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
+import { useCategories } from "../../hooks/useCategories";
 import { BentoCard } from "../common/BentoCard";
 import { MetricTile } from "../common/MetricTile";
 import {
-  CATEGORY_COLORS,
   CHART_PALETTE,
   type Transaction,
   type TransactionCategory,
@@ -43,6 +43,7 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
   activeMonth,
 }) => {
   const { t } = useTranslation();
+  const categories = useCategories();
   const [chartType, setChartType] = useState<"donut" | "bar">("donut");
 
   const monthRows = transactions.filter((row) => row.date.startsWith(activeMonth));
@@ -72,9 +73,9 @@ export const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
   const breakdown = Object.entries(categoryTotals)
     .map(([name, value], index) => ({
       name: name as TransactionCategory,
-      displayName: t(`category.${name}`),
+      displayName: categories.label(name),
       value,
-      color: CATEGORY_COLORS[name as TransactionCategory] || CHART_PALETTE[index % CHART_PALETTE.length],
+      color: categories.color(name) || CHART_PALETTE[index % CHART_PALETTE.length],
     }))
     .sort((a, b) => b.value - a.value);
 

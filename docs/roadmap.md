@@ -19,11 +19,13 @@ Order: finance features → UX polish → game layer.
   - Implemented as a `Savings` transaction with `counterAccountId`: it stays in every savings metric, and balances move the amount from the source account into the goal account.
 - Regular bill payments can also choose which account paid.
 
-## Phase 3 — Custom categories & category budgets
+## Phase 3 — Custom categories & category budgets ✅
 - The 9 built-in categories become defaults; users can add, edit and hide categories, each mapped to Needs / Wants / Savings.
 - Every category has an icon and a distinct colour (expanded AA-checked palette); never colour alone.
 - Monthly limit per category with alerts at 80% and 100%; limits roll up into the 50/30/20 buckets. No rollover.
 - Risk: `TransactionCategory` turns from a union type into stored data and touches many files.
+  - Built-in ids stay the same ("Food", "Income", …), so stored data needed no migration. Categories live in the `categories` setting and reach components through `CategoriesContext` (`useCategories`).
+- Found while testing, for Phase 5: hard-coded English in Budget ("Allocation Slider", "% of budget") and an uninterpolated `{{amount}}` in the Dashboard's Safe-to-Spend breakdown.
 
 ## Phase 4 — Balance check & reminders
 - Enter the real balance of an account; the app shows the difference. A shortfall is recorded in a system "Unaccounted" category (shown separately in Analytics); a surplus is recorded as an "Adjustment" income. Differences can be split into several entries.

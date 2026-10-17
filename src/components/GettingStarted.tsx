@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCategories } from "../hooks/useCategories";
 import { SAMPLE_TRANSACTIONS } from "../constants/sampleData";
 
 interface Props {
@@ -22,6 +23,7 @@ const STEP_TITLES: Record<SetupStep, string> = {
 
 export function GettingStarted({ income, onIncome, onBudget, onFirstTransaction, onDismiss }: Props) {
   const { t } = useTranslation();
+  const categories = useCategories();
   const [step, setStep] = useState<SetupStep>("welcome");
   const [amount, setAmount] = useState(String(income || ""));
 
@@ -72,7 +74,7 @@ export function GettingStarted({ income, onIncome, onBudget, onFirstTransaction,
                 {SAMPLE_TRANSACTIONS.slice(0, 4).map((tx) => (
                   <tr key={tx.id} className="hover:bg-[var(--color-surface-subtle)]/50 transition-colors">
                     <td className="py-2.5 px-3 text-[var(--color-ink)] font-medium">{tx.name}</td>
-                    <td className="py-2.5 px-3 text-[var(--color-ink-soft)]">{t(`category.${tx.category}`)}</td>
+                    <td className="py-2.5 px-3 text-[var(--color-ink-soft)]">{categories.label(tx.category)}</td>
                     <td
                       className={`py-2.5 px-3 text-right font-mono font-semibold ${
                         tx.amount > 0 ? "text-[var(--jade-ink)]" : "text-[var(--rose-ink)]"

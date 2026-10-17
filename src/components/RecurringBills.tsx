@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowRight, CalendarDots, CheckCircle, CreditCard, PencilSimple, Plus, Receipt, Trash, X } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
+import { useCategories } from "../hooks/useCategories";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { getUnpaidBillOccurrences } from "../utils/recurringBills";
 import { getDaysInMonth, getLocalTodayISO } from "../utils/safeToSpend";
@@ -9,9 +10,6 @@ import type { Account, BillOccurrence, RecurringBill, RecurringBillPayment, Tran
 import type { CardBillOccurrence } from "../utils/cardBills";
 
 const thb = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
-const billCategories: Exclude<TransactionCategory, "Income" | "Savings">[] = [
-  "Food", "Transport", "Home", "Health", "Learning", "Fun", "Debt",
-];
 
 type BillForm = {
   name: string;
@@ -68,6 +66,7 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
   onPayCard,
 }) => {
   const { t } = useTranslation();
+  const categories = useCategories();
   const [dialog, setDialog] = useState<DialogState>(null);
   const [payFromId, setPayFromId] = useState("");
   const activeAccounts = accounts.filter((account) => !account.archived);
@@ -251,7 +250,7 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="truncate text-sm font-bold text-[var(--color-ink)]">{bill.name}</h3>
-                    <span className="rounded-full bg-[var(--color-surface-subtle)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-ink-soft)]">{t(`category.${bill.category}`)}</span>
+                    <span className="rounded-full bg-[var(--color-surface-subtle)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-ink-soft)]">{categories.label(bill.category)}</span>
                     {bill.estimated && <span className="rounded-full border border-[var(--amber)]/30 bg-[var(--amber-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--amber-ink)]">{t("bills.estimated")}</span>}
                   </div>
                   <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
@@ -322,7 +321,7 @@ export const RecurringBillsManager: React.FC<RecurringBillsProps> = ({
                 <label className="block space-y-1 text-xs font-semibold text-[var(--color-ink-soft)]"><span>{t("bills.name")}</span><input autoFocus required maxLength={80} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]" /></label>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="block space-y-1 text-xs font-semibold text-[var(--color-ink-soft)]"><span>{t("bills.amount")}</span><input required type="number" min="0.01" step="0.01" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 font-mono text-sm text-[var(--color-ink)]" /></label>
-                  <label className="block space-y-1 text-xs font-semibold text-[var(--color-ink-soft)]"><span>{t("quickAdd.categoryLabel")}</span><select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value as BillForm["category"] })} className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]">{billCategories.map((category) => <option key={category} value={category}>{t(`category.${category}`)}</option>)}</select></label>
+                  <label className="block space-y-1 text-xs font-semibold text-[var(--color-ink-soft)]"><span>{t("quickAdd.categoryLabel")}</span><select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value as BillForm["category"] })} className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]">{categories.expenseIds({ excludeSavings: true, keep: form.category }).map((category) => <option key={category} value={category}>{categories.label(category)}</option>)}</select></label>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block space-y-1 text-xs font-semibold text-[var(--color-ink-soft)]"><span>{t("bills.frequency")}</span><select value={form.recurrence} onChange={(event) => setForm({ ...form, recurrence: event.target.value as BillForm["recurrence"] })} className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"><option value="monthly">{t("bills.monthly")}</option><option value="yearly">{t("bills.yearly")}</option></select></label>

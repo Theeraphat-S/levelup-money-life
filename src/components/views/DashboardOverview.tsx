@@ -15,16 +15,16 @@ import {
   Wallet,
 } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
+import { useCategories } from "../../hooks/useCategories";
 import { BentoCard } from "../common/BentoCard";
 import { MetricTile } from "../common/MetricTile";
 import { TactileButton } from "../common/TactileButton";
 import { FloatingReward, type FloatingRewardItem } from "../common/FloatingReward";
 import { UpcomingBillsSummary } from "../RecurringBills";
+import { CategoryIcon } from "../common/CategoryIcon";
 import type { CardBillOccurrence } from "../../utils/cardBills";
 import { calculateDailySafeToSpend, getLocalTodayISO } from "../../utils/safeToSpend";
 import {
-  CATEGORY_BUCKET_MAP,
-  CATEGORY_COLORS,
   type Allocation,
   type Quest,
   type RecurringBill,
@@ -65,6 +65,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   cardBills,
 }) => {
   const { t } = useTranslation();
+  const categories = useCategories();
   const shouldReduceMotion = useReducedMotion();
   const [floatingRewards, setFloatingRewards] = useState<FloatingRewardItem[]>([]);
 
@@ -95,7 +96,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     .filter((tx) => tx.amount < 0 && tx.category !== "Savings")
     .forEach((tx) => {
       if (tx.category !== "Income") {
-        const bucket = CATEGORY_BUCKET_MAP[tx.category] || "Wants";
+        const bucket = categories.bucket(tx.category);
         bucketActuals[bucket] += Math.abs(tx.amount);
       }
     });
@@ -475,7 +476,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <tbody className="divide-y divide-[var(--color-line)]">
               {recentTransactions.map((row) => {
                 const isPositive = row.amount >= 0;
-                const catColor = CATEGORY_COLORS[row.category] || "var(--color-line)";
                 return (
                   <tr key={row.id} className="hover:bg-[var(--color-surface-subtle)] transition-colors">
                     <td className="py-2.5 px-3 font-semibold text-[var(--color-ink)]">
@@ -490,8 +490,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     </td>
                     <td className="py-2.5 px-3 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-medium border border-[var(--color-line)] bg-[var(--color-surface)] text-xs">
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: catColor }} />
-                        {t(`category.${row.category}`)}
+                        <CategoryIcon category={row.category} size={12} />
+                        {categories.label(row.category)}
                       </span>
                     </td>
                     <td className="py-2.5 px-3 font-mono text-[var(--color-ink-soft)] whitespace-nowrap">

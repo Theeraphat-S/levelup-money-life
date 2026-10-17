@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { AnimatePresence, motion, MotionConfig, useReducedMotion, type HTMLMotionProps } from "motion/react";
 import { SPRING, DURATION, easeOut } from "./constants/motion";
 import { CalendarDots, Sparkle } from "@phosphor-icons/react";
@@ -13,6 +13,8 @@ import { QuickAddModal } from "./components/QuickAddModal";
 import { SlipScanModal } from "./components/SlipScanModal";
 import { DataManagerModal } from "./components/DataManagerModal";
 import { AccountManagerModal } from "./components/AccountManagerModal";
+import { CategoryManagerModal } from "./components/CategoryManagerModal";
+import { CategoriesContext } from "./hooks/useCategories";
 import { LevelUpCelebration } from "./components/LevelUpCelebration";
 
 // Views
@@ -62,6 +64,16 @@ import type { BackupData } from "./services/exportImport";
 import type { Account, RecurringBill, RecurringBillPayment, Transaction, Transfer, ViewTab } from "./types";
 import { recordBillPayment } from "./utils/recurringBills";
 import { getCardBills } from "./utils/cardBills";
+import {
+  BUILT_IN_CATEGORIES,
+  computeCategoryBudgets,
+  findCategory,
+  isCategoryUsed,
+  mergeWithBuiltIns,
+  newlyCrossedBudgets,
+  type CategoryBudgetStatus,
+  type CategoryDef,
+} from "./utils/categories";
 import { getLocalTodayISO } from "./utils/safeToSpend";
 import {
   DEFAULT_ACCOUNT_ID,
@@ -89,6 +101,8 @@ export default function App() {
   const [quickAddType, setQuickAddType] = useState<"expense" | "income">("expense");
   const [isDataManagerOpen, setIsDataManagerOpen] = useState<boolean>(false);
   const [isAccountsOpen, setIsAccountsOpen] = useState<boolean>(false);
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState<boolean>(false);
+  const [categories, setCategories] = useState<CategoryDef[]>(BUILT_IN_CATEGORIES);
   const [recurringBills, setRecurringBills] = useState<RecurringBill[]>([]);
 
   // Domain Hooks
@@ -213,6 +227,45 @@ export default function App() {
     },
   });
 
+  const persistCategories = (next: CategoryDef[]) => {
+    const merged = mergeWithBuiltIns(next);
+    setCategories(merged);
+    void saveSetting("categories", merged);
+  };
+
+  const handleSetCategoryLimit = (categoryId: string, limit: number | undefined) => {
+    persistCategories(categories.map((c) => {
+      if (c.id !== categoryId) return c;
+      const { monthlyLimit: _previous, ...rest } = c;
+      return limit ? { ...rest, monthlyLimit: limit } : rest;
+    }));
+  };
+
+  const categoryInUse = (categoryId: string) => isCategoryUsed(categoryId, transactions, [...presets, ...recurringBills]);
+
+  // Warn once when a category limit for the current month reaches 80% or 100%
+  const budgetStatusRef = useRef<{ month: string; statuses: CategoryBudgetStatus[] } | null>(null);
+  useEffect(() => {
+    if (loading) return;
+    const month = getLocalTodayISO().slice(0, 7);
+    const statuses = computeCategoryBudgets(categories, transactions, month);
+    const previous = budgetStatusRef.current;
+    budgetStatusRef.current = { month, statuses };
+    if (!previous || previous.month !== month) return;
+    const crossed = newlyCrossedBudgets(previous.statuses, statuses);
+    if (crossed.length === 0) return;
+    const worst = crossed.find((status) => status.level === "over") ?? crossed[0];
+    const def = findCategory(categories, worst.id);
+    const name = def.builtIn ? t(`category.${def.id}`) : def.name ?? def.id;
+    const limit = worst.limit.toLocaleString();
+    showToast(
+      worst.level === "over"
+        ? t("categories.alertOver", { name, limit })
+        : t("categories.alertWarn", { name, limit, percent: Math.round(worst.ratio * 100) }),
+      5000
+    );
+  }, [loading, categories, transactions, t, showToast]);
+
   // Credit card bills due in the selected month (paid by transfer, outside Safe-to-Spend)
   const cardBills = useMemo(
     () => getCardBills(accounts, activeMonth, getLocalTodayISO(), transactions, transfers),
@@ -279,6 +332,7 @@ export default function App() {
           await saveAllTransactions(txs).catch((err) => console.error("Account migration failed:", err));
         }
         initAccounts(loadedAccounts, loadedTransfers, savedDefaultAccount);
+        setCategories(mergeWithBuiltIns(await getSetting<CategoryDef[]>("categories", [])));
         setShowSetup(!setupComplete && txs.length === 0);
 
         initTransactions(txs, savedPresets);
@@ -429,6 +483,7 @@ export default function App() {
     if (backup.presets) setPresets(backup.presets);
     if (backup.savingsGoals) setSavingsGoals(backup.savingsGoals);
     if (backup.recurringBills) persistRecurringBills(backup.recurringBills);
+    if (backup.categories) persistCategories(backup.categories);
     if (backup.gamification?.totalXp) {
       setTotalXp(backup.gamification.totalXp);
     }
@@ -447,6 +502,7 @@ export default function App() {
     await saveSetting("unlockedAchievements", ["first_log"]);
     await saveStoredPresets(DEFAULT_PRESETS);
     replaceAllAccounts([createDefaultAccount(t("accounts.defaultName"))], []);
+    persistCategories(BUILT_IN_CATEGORIES);
 
     setTransactionsState(SAMPLE_TRANSACTIONS);
     setAllocationsState(SAMPLE_ALLOCATIONS);
@@ -479,6 +535,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
+    <CategoriesContext.Provider value={categories}>
     <main className="min-h-[100dvh] px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1400px]">
         {/* Top Header Command Deck */}
@@ -571,6 +628,8 @@ export default function App() {
                 accounts={accounts}
                 defaultAccountId={defaultAccountId}
                 onPayCard={(transfer) => { addTransfer(transfer); showToast(t("accounts.transferSaved")); }}
+                onSetCategoryLimit={handleSetCategoryLimit}
+                onManageCategories={() => setIsCategoriesOpen(true)}
               />
             </motion.div>
           )}
@@ -677,9 +736,17 @@ export default function App() {
           accounts={accounts}
           transfers={transfers}
           defaultAccountId={defaultAccountId}
+          categories={categories}
           onRestoreBackup={handleRestoreBackup}
           onImportTransactions={(txs) => { void importTransactions(assignMissingAccounts(txs, accounts, defaultAccountId), { onAwardXp: addXp }).catch(() => {}); }}
           onResetData={handleResetData}
+        />
+
+        <CategoryManagerModal
+          isOpen={isCategoriesOpen}
+          onClose={() => setIsCategoriesOpen(false)}
+          onSave={persistCategories}
+          isUsed={categoryInUse}
         />
 
         <AccountManagerModal
@@ -735,6 +802,7 @@ export default function App() {
         </AnimatePresence>
       </div>
     </main>
+    </CategoriesContext.Provider>
     </MotionConfig>
   );
 }

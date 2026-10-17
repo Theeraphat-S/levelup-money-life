@@ -393,6 +393,7 @@ interface AmountCandidate {
  */
 export type QuickParseOptions = {
   accountAliases?: string[]; // Lowercased account aliases that "@alias" may refer to
+  categoryTags?: Record<string, string>; // Lowercased custom category names -> category id
 };
 
 export function parseQuickInput(input: string, options: QuickParseOptions = {}): ParsedQuickTransaction {
@@ -465,8 +466,9 @@ export function parseQuickInput(input: string, options: QuickParseOptions = {}):
     const match = text.match(pattern);
     if (match) {
       const tagKey = match[1].toLowerCase();
-      if (CATEGORY_TAG_MAP[tagKey]) {
-        explicitCategory = CATEGORY_TAG_MAP[tagKey];
+      const tagged = options.categoryTags?.[tagKey] ?? CATEGORY_TAG_MAP[tagKey];
+      if (tagged) {
+        explicitCategory = tagged;
         text = text.replace(match[0], " ").trim();
         break;
       }
